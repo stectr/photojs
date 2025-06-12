@@ -10,16 +10,60 @@ fileInput.onchange = () => { selectedFile = fileInput.files[0]; updateBtn(); };
 nameInput.oninput = () => { selectedName = nameInput.value.trim(); updateBtn(); };
 function updateBtn() { uploadBtn.disabled = !selectedFile || !selectedName; }
 
-uploadBtn.onclick = async () => {
+uploadBtn.onclick = () => {
+    if (!selectedFile || !selectedName) return;
+
     const form = new FormData();
     form.append('photo', selectedFile);
     form.append('name', selectedName);
-    const res = await fetch('/api/upload', { method: 'POST', body: form });
-    if (!res.ok) return alert('Upload failed');
-    selectedFile = null; selectedName = '';
-    fileInput.value = ''; nameInput.value = ''; updateBtn();
-    loadGallery();
+
+    const progressContainer = document.getElementById('uploadProgressContainer');
+    const progressBar = document.getElementById('uploadProgressBar');
+
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload');
+
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = percent + '%';
+        }
+    };
+
+    xhr.onload = async () => {
+        if (xhr.status === 200) {
+            progressBar.style.width = '100%';
+            progressBar.textContent = 'Upload complete!';
+            selectedFile = null;
+            selectedName = '';
+            fileInput.value = '';
+            nameInput.value = '';
+            updateBtn();
+            await loadGallery();
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+            }, 1500);
+        } else {
+            alert('Upload failed');
+            progressContainer.style.display = 'none';
+        }
+    };
+
+    xhr.onerror = () => {
+        alert('Upload failed');
+        progressContainer.style.display = 'none';
+    };
+
+    xhr.send(form);
 };
+
 
 async function loadGallery() {
     const photos = await (await fetch('/api/photos')).json();
