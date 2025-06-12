@@ -3,3 +3,6 @@
 
 # Ignore user-uploads & generated thumbs
 /public/uploads/**
+
+# photos json
+/backend/photos.json
