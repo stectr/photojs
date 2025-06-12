@@ -1,2 +1,5 @@
 # macOS Finder metadata
 .DS_Store
+
+# Ignore user-uploads & generated thumbs
+/public/uploads/**

@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
+const sharp = require('sharp');
 
 const app = express();
 app.use(cors());
@@ -10,10 +11,12 @@ app.use(express.json());
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC, 'uploads');
+const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');
 const DATA_FILE = path.join(__dirname, 'photos.json');
 
 // Ensure dirs & data file
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(THUMB_DIR)) fs.mkdirSync(THUMB_DIR, { recursive: true });
 if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify([]));
 
 // Multer config
@@ -31,23 +34,45 @@ const upload = multer({ storage });
 function readPhotos() { return JSON.parse(fs.readFileSync(DATA_FILE)); }
 function writePhotos(arr) { fs.writeFileSync(DATA_FILE, JSON.stringify(arr, null, 2)); }
 
-// Serve uploads and static
+// Serve uploads (including thumbs) and static
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use(express.static(PUBLIC));
 
 // GET photos
 app.get('/api/photos', (req, res) => {
-    const photos = readPhotos().map(p => ({ ...p, url: `/uploads/${p.filename}` }));
+    const photos = readPhotos().map(p => ({
+        filename: p.filename,
+        label: p.label,
+        url: `/uploads/${p.filename}`,
+        thumbUrl: `/uploads/thumbs/${p.filename}`
+    }));
     res.json(photos);
 });
 
-// POST upload (with name)
-app.post('/api/upload', upload.single('photo'), (req, res) => {
+// POST upload (with thumbnail)
+app.post('/api/upload', upload.single('photo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file' });
     const label = (req.body.name || '').trim() || req.file.filename;
     const entry = { filename: req.file.filename, label };
+
+    const origPath = path.join(UPLOAD_DIR, req.file.filename);
+    const thumbPath = path.join(THUMB_DIR, req.file.filename);
+    try {
+        const meta = await sharp(origPath).metadata();
+        await sharp(origPath)
+            .resize(Math.round(meta.width * 0.25))   // 25% width
+            .toFile(thumbPath);
+    } catch (err) {
+        console.error('Thumbnail error:', err);
+    }
+
     writePhotos([entry, ...readPhotos()]);
-    res.json({ ...entry, url: `/uploads/${entry.filename}` });
+    res.json({
+        filename: entry.filename,
+        label: entry.label,
+        url: `/uploads/${entry.filename}`,
+        thumbUrl: `/uploads/thumbs/${entry.filename}`
+    });
 });
 
 // POST reorder/rename

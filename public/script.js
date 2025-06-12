@@ -1,4 +1,3 @@
-// public/script.js
 // Handles upload, listing, drag-and-drop, delete, and inline rename
 
 const fileInput = document.getElementById('fileInput');
@@ -30,61 +29,76 @@ async function loadGallery() {
         div.className = 'col-lg-4 col-md-6 col-12 mb-4 position-relative';
         div.id = p.filename;
         div.innerHTML = `
-      <img src="${p.url}" class="img-fluid rounded shadow-sm" alt="${p.label}" data-bs-toggle="modal" data-bs-target="#imageModal" data-large="${p.url}">
+      <img
+        src="${p.thumbUrl}"
+        class="img-fluid rounded shadow-sm"
+        alt="${p.label}"
+        data-bs-toggle="modal"
+        data-bs-target="#imageModal"
+        data-large="${p.url}"
+      >
       <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 delete-btn">×</button>
       <p class="text-center mt-1 rename-label">${p.label}</p>
     `;
-        // Delete handler
+        // Delete
         div.querySelector('.delete-btn').onclick = async () => {
             if (!confirm('Delete this photo?')) return;
-            await fetch(`/api/photo/${p.filename}`, { method: 'DELETE' }); loadGallery();
+            await fetch(`/api/photo/${p.filename}`, { method: 'DELETE' });
+            loadGallery();
         };
-        // Inline rename on double-click
+        // Inline rename
         const labelEl = div.querySelector('.rename-label');
-        labelEl.addEventListener('dblclick', () => {
+        const dblHandler = () => {
             const input = document.createElement('input');
             input.type = 'text';
             input.value = labelEl.textContent;
             input.className = 'form-control';
             labelEl.replaceWith(input);
-            input.focus();
-            input.select();
+            input.focus(); input.select();
             const commit = async () => {
                 const newLabel = input.value.trim() || p.filename;
                 const newP = document.createElement('p');
                 newP.className = 'text-center mt-1 rename-label';
                 newP.textContent = newLabel;
                 input.replaceWith(newP);
-                // Reattach rename listener
-                newP.addEventListener('dblclick', labelEl._dblHandler);
+                newP.addEventListener('dblclick', dblHandler);
                 // Save order+labels
-                const order = Array.from(gallery.children).map(el => ({ filename: el.id, label: el.querySelector('.rename-label').textContent }));
+                const order = Array.from(gallery.children).map(el => ({
+                    filename: el.id,
+                    label: el.querySelector('.rename-label').textContent
+                }));
                 await fetch('/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(order)
                 });
             };
-            // Store handler for reattach
-            labelEl._dblHandler = arguments.callee;
             input.addEventListener('blur', commit);
             input.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
-        });
+        };
+        labelEl.addEventListener('dblclick', dblHandler);
+
         gallery.appendChild(div);
     });
-    // Modal image handler
+
+    // Modal
     const imageModal = document.getElementById('imageModal');
     imageModal.addEventListener('show.bs.modal', event => {
         const imgEl = event.relatedTarget;
         document.getElementById('modalImage').src = imgEl.getAttribute('data-large');
     });
-    // Drag-and-drop
+
+    // Drag-and-drop reorder
     Sortable.create(gallery, {
         animation: 150,
         onEnd: async () => {
-            const order = Array.from(gallery.children).map(el => ({ filename: el.id, label: el.querySelector('.rename-label').textContent }));
+            const order = Array.from(gallery.children).map(el => ({
+                filename: el.id,
+                label: el.querySelector('.rename-label').textContent
+            }));
             await fetch('/api/order', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(order)
             });
         }
