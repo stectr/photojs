@@ -86,9 +86,6 @@ app.post('/api/order', (req, res) => {
 });
 
 // DELETE photo
-const fs = require('fs');
-const path = require('path');
-
 app.delete('/photos/:filename', (req, res) => {
     const filename = req.params.filename;
     const filepath = path.join(__dirname, 'public/uploads', filename);
