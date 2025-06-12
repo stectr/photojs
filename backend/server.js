@@ -86,31 +86,31 @@ app.post('/api/order', (req, res) => {
 });
 
 // DELETE photo
-app.delete('/photos/:filename', (req, res) => {
-    const filename = req.params.filename;
-    const filepath = path.join(__dirname, 'public/uploads', filename);
-    const thumbpath = path.join(__dirname, 'public/uploads/thumbs', filename);
+app.delete('/api/photo/:filename', (req, res) => {
+    const file = req.params.filename;
+    const origPath = path.join(UPLOAD_DIR, file);
+    const thumbPath = path.join(THUMB_DIR, file);
 
-    // Delete original
-    fs.unlink(filepath, (err) => {
-        if (err) {
-            console.error('Error deleting original image:', err);
-            return res.status(500).send('Error deleting photo');
-        }
+    // Delete original file
+    fs.unlink(origPath, (err) => {
+        if (err) return res.status(500).json({ error: 'Error deleting original file: ' + err.message });
 
-        // Delete thumbnail
-        fs.unlink(thumbpath, (thumbErr) => {
+        // Delete thumbnail file
+        fs.unlink(thumbPath, (thumbErr) => {
+            // Ignore error if thumbnail doesn't exist (ENOENT)
             if (thumbErr && thumbErr.code !== 'ENOENT') {
-                console.error('Error deleting thumbnail:', thumbErr);
-                return res.status(500).send('Error deleting thumbnail');
+                return res.status(500).json({ error: 'Error deleting thumbnail: ' + thumbErr.message });
             }
 
-            return res.sendStatus(200);
+            // Update photos.json file after both deletes succeeded
+            const photos = readPhotos().filter(p => p.filename !== file);
+            writePhotos(photos);
+
+            res.sendStatus(200);
         });
     });
 });
 
-
-// Start
+// Start\
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
