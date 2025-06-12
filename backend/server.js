@@ -86,14 +86,33 @@ app.post('/api/order', (req, res) => {
 });
 
 // DELETE photo
-app.delete('/api/photo/:filename', (req, res) => {
-    const file = req.params.filename;
-    fs.unlink(path.join(UPLOAD_DIR, file), err => {
-        if (err) return res.status(500).json({ error: err.message });
-        writePhotos(readPhotos().filter(p => p.filename !== file));
-        res.sendStatus(200);
+const fs = require('fs');
+const path = require('path');
+
+app.delete('/photos/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filepath = path.join(__dirname, 'public/uploads', filename);
+    const thumbpath = path.join(__dirname, 'public/uploads/thumbs', filename);
+
+    // Delete original
+    fs.unlink(filepath, (err) => {
+        if (err) {
+            console.error('Error deleting original image:', err);
+            return res.status(500).send('Error deleting photo');
+        }
+
+        // Delete thumbnail
+        fs.unlink(thumbpath, (thumbErr) => {
+            if (thumbErr && thumbErr.code !== 'ENOENT') {
+                console.error('Error deleting thumbnail:', thumbErr);
+                return res.status(500).send('Error deleting thumbnail');
+            }
+
+            return res.sendStatus(200);
+        });
     });
 });
+
 
 // Start
 app.listen(3000, () => console.log('Server http://localhost:3000'));
