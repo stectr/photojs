@@ -73,59 +73,66 @@ async function loadGallery() {
         div.className = 'col-lg-4 col-md-6 col-12 mb-4 position-relative';
         div.id = p.filename;
         div.innerHTML = `
-      <img
-        src="${p.thumbUrl}"
-        class="img-fluid rounded shadow-sm"
-        alt="${p.label}"
-        data-bs-toggle="modal"
-        data-bs-target="#imageModal"
-        data-large="${p.url}"
-      >
-      <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 delete-btn">×</button>
-      <p class="text-center mt-1 rename-label">${p.label}</p>
-    `;
+          <img
+            src="${p.thumbUrl}"
+            class="img-fluid rounded shadow-sm"
+            alt="${p.label}"
+            data-bs-toggle="modal"
+            data-bs-target="#imageModal"
+            data-large="${p.url}"
+          >
+          <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 delete-btn">×</button>
+          <p class="text-center mt-1 rename-label">${p.label}</p>
+        `;
+
         // Delete
         div.querySelector('.delete-btn').onclick = async () => {
             if (!confirm('Delete this photo?')) return;
             await fetch(`/api/photo/${p.filename}`, { method: 'DELETE' });
-            loadGallery();
+            await loadGallery();
         };
-        // Inline rename
+
+        // Inline rename with forced reload after commit
         const labelEl = div.querySelector('.rename-label');
-        const dblHandler = () => {
+        labelEl.addEventListener('dblclick', () => {
             const input = document.createElement('input');
             input.type = 'text';
             input.value = labelEl.textContent;
-            input.className = 'form-control';
+            input.className = 'form-control text-center mt-1';
             labelEl.replaceWith(input);
-            input.focus(); input.select();
+            input.focus();
+            input.select();
+
             const commit = async () => {
                 const newLabel = input.value.trim() || p.filename;
-                const newP = document.createElement('p');
-                newP.className = 'text-center mt-1 rename-label';
-                newP.textContent = newLabel;
-                input.replaceWith(newP);
-                newP.addEventListener('dblclick', dblHandler);
-                // Save order+labels
+
+                // Prepare order array with updated label
                 const order = Array.from(gallery.children).map(el => ({
                     filename: el.id,
-                    label: el.querySelector('.rename-label').textContent
+                    label: el.id === p.filename ? newLabel : el.querySelector('.rename-label')?.textContent || ''
                 }));
+
+                // Send update to server
                 await fetch('/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(order)
                 });
+
+                // Reload entire gallery to reset handlers and update UI
+                await loadGallery();
             };
+
             input.addEventListener('blur', commit);
-            input.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
-        };
-        labelEl.addEventListener('dblclick', dblHandler);
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') commit();
+            });
+        });
 
         gallery.appendChild(div);
     });
 
-    // Modal
+    // Modal image setup
     const imageModal = document.getElementById('imageModal');
     imageModal.addEventListener('show.bs.modal', event => {
         const imgEl = event.relatedTarget;
