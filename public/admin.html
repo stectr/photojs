@@ -12,11 +12,12 @@
 </head>
 
 <body>
+    <!-- Logout button top-right -->
     <nav class="navbar navbar-light bg-light">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
                 <img src="/favicons/500x500.png" alt="Icon" class="me-2" style="max-height:3.5em">
-                <h1 class="display-4 mb-0">ste's website</h1>
+                <h1 class="mb-0">ste's website</h1>
             </div>
             <div>
                 <a href="/logout" id="logoutLink" class="btn btn-outline-secondary">Logout</a>
@@ -24,20 +25,23 @@
         </div>
     </nav>
 
-    <main class=" container my-5">
-        <div class="d-flex mb-4" id="uploadBar">
-            <input type="file" id="fileInput" class="form-control me-2" accept=".jpg,.jpeg,.png">
-            <input type="text" id="nameInput" class="form-control me-2" placeholder="Enter name">
+    <main class="container my-5">
+        <div id="uploadBar" class="d-flex gap-2 mb-2">
+            <input type="file" id="fileInput" class="form-control" accept=".jpg,.jpeg,.png">
+            <input type="text" id="nameInput" class="form-control" placeholder="Enter name">
             <button id="uploadBtn" class="btn btn-primary" disabled>Upload</button>
         </div>
-        <div class="progress mt-2" style="height: 1.5rem; display: none;" id="uploadProgressContainer">
+
+        <div id="uploadProgressContainer" class="progress mb-4" style="display: none; height: 1.5rem;">
             <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-                role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                role="progressbar" style="width: 0%; height: 100%; line-height: 1.5rem; font-size: 0.9rem;">
                 0%
             </div>
         </div>
-        <div id="gallery" class="row"></div>
+
+        <div id="gallery" class="row g-4"></div>
     </main>
+
 
     <!-- Full Image Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1">
