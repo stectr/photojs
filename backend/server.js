@@ -5,9 +5,33 @@ const fs = require('fs');
 const cors = require('cors');
 const sharp = require('sharp');
 
+const session = require('express-session');
+const bodyParser = require('body-parser');
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(session({
+    secret: 'your-very-secure-secret', // change this!
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // true if using HTTPS
+}));
+
+function auth(req, res, next) {
+    if (req.session.user) {
+        // Disable caching for authenticated pages
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        next();
+    } else {
+        res.redirect('/login');
+    }
+}
+
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC, 'uploads');
@@ -36,6 +60,10 @@ function writePhotos(arr) { fs.writeFileSync(DATA_FILE, JSON.stringify(arr, null
 
 // Serve uploads (including thumbs) and static
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.get('/admin.html', auth, (req, res) => {
+    res.sendFile(path.join(PUBLIC, 'admin.html'));
+});
 app.use(express.static(PUBLIC));
 
 // GET photos
@@ -50,7 +78,7 @@ app.get('/api/photos', (req, res) => {
 });
 
 // POST upload (with thumbnail)
-app.post('/api/upload', upload.single('photo'), async (req, res) => {
+app.post('/api/upload', auth, upload.single('photo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file' });
     const label = (req.body.name || '').trim() || req.file.filename;
     const entry = { filename: req.file.filename, label };
@@ -76,7 +104,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 });
 
 // POST reorder/rename
-app.post('/api/order', (req, res) => {
+app.post('/api/order', auth, (req, res) => {
     const arr = req.body;
     if (!Array.isArray(arr)) return res.status(400).json({ error: 'Array required' });
     const existing = new Set(fs.readdirSync(UPLOAD_DIR));
@@ -85,8 +113,35 @@ app.post('/api/order', (req, res) => {
     res.sendStatus(200);
 });
 
+// Hardcoded user for demo
+const USER = { username: 'admin', password: 'photoserver' };
+
+// Show login form
+app.get('/login', (req, res) => {
+    res.redirect('/');
+});
+
+
+// Handle login submission
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === USER.username && password === USER.password) {
+        req.session.user = username;
+        return res.redirect('/admin.html'); // this triggers the browser redirect
+    }
+    res.status(401).send('Invalid credentials. Please try again.');
+});
+
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.redirect('/');
+    });
+});
+
+
 // DELETE photo
-app.delete('/api/photo/:filename', (req, res) => {
+app.delete('/api/photo/:filename', auth, (req, res) => {
     const file = req.params.filename;
     const origPath = path.join(UPLOAD_DIR, file);
     const thumbPath = path.join(THUMB_DIR, file);
@@ -110,6 +165,7 @@ app.delete('/api/photo/:filename', (req, res) => {
         });
     });
 });
+
 
 // Start\
 const PORT = process.env.PORT || 80;

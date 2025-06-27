@@ -11,15 +11,84 @@
 </head>
 
 <body>
+    <!-- Login button top-right -->
     <nav class="navbar navbar-light bg-light">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-                <img src="/favicons/500x500.png" alt="Icon" class="me-2" style="max-height: 3.5em">
+                <img src="/favicons/500x500.png" alt="Icon" class="me-2" style="max-height: 3.5em" />
                 <h1 class="display-4 text-dark mb-0">ste's website</h1>
             </div>
-            <p class="lead text-dark mb-0 text-end">temporary photography page</p>
+            <div>
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                    data-bs-target="#loginModal">
+                    Login
+                </button>
+            </div>
         </div>
     </nav>
+
+    <!-- Simplified Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="loginForm" class="p-3"> <!-- padding inside form for spacing -->
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="loginModalLabel">Login</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="usernameInput" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="usernameInput" name="username" required
+                            autocomplete="username" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="passwordInput" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="passwordInput" name="password" required
+                            autocomplete="current-password" />
+                    </div>
+                    <div id="loginError" class="text-danger" style="display:none;"></div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            loginError.style.display = 'none';
+            const formData = new FormData(loginForm);
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                });
+
+                if (res.redirected) {
+                    // Redirect after successful login
+                    window.location.href = res.url;
+                } else {
+                    // Show error
+                    const text = await res.text();
+                    loginError.textContent = text;
+                    loginError.style.display = 'block';
+                }
+            } catch (err) {
+                loginError.textContent = 'Network error. Please try again.';
+                loginError.style.display = 'block';
+            }
+        });
+    </script>
 
     <main class="container my-5">
         <div id="gallery" class="row"></div>
