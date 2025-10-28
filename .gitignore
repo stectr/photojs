@@ -6,3 +6,6 @@
 
 # photos json
 /backend/photos.json
+
+# ipa files
+*.ipa
