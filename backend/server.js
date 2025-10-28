@@ -114,7 +114,7 @@ app.post('/api/order', auth, (req, res) => {
 });
 
 // Hardcoded user for demo
-const USER = { username: 'admin', password: 'photoserver' };
+const USER = { username: 'admin', password: 'password' };
 
 // Show login form
 app.get('/login', (req, res) => {

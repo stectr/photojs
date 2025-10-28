@@ -1,0 +1,19 @@
+{
+    "name": "ste's repo",
+    "identifier": "com.sctruong.ste",
+    "subtitle": "ste's custom repo",
+    "apps": [
+        {
+            "name": "Adobe Lightroom",
+            "bundleIdentifier": "com.adobe.lrmobile",
+            "developerName": "Adobe Inc.",
+            "version": "10.5.2",
+            "versionDate": "2025-10-20",
+            "versionDescription": "10.5.2",
+            "downloadURL": "https://sctruong.com/apps/Lightroom1052.ipa",
+            "localizedDescription": "Edit, organize, and share photos with Adobe Lightroom.",
+            "iconURL": "https://sctruong/appicons/460x0w.png",
+            "size": 180.4
+        }
+    ]
+}

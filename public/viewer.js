@@ -23,10 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGallery();
 
     // Modal handler: when the modal opens, grab the clicked thumbnail's data-large
-    const imageModal = document.getElementById('imageModal');
     imageModal.addEventListener('show.bs.modal', event => {
-        const thumb = event.relatedTarget;                      // the <img> that triggered it
-        const fullUrl = thumb.getAttribute('data-large');       // your full-size URL
-        document.getElementById('modalImage').src = fullUrl;    // swap into the modal <img>
+        const thumb = event.relatedTarget;
+        const fullUrl = thumb.getAttribute('data-large');
+        const modalImage = document.getElementById('modalImage');
+        modalImage.src = ''; // clear previous image immediately
+        modalImage.src = `${fullUrl}?t=${Date.now()}`; // unique URL disables cache
     });
 });
