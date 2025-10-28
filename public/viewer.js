@@ -26,8 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     imageModal.addEventListener('show.bs.modal', event => {
         const thumb = event.relatedTarget;
         const fullUrl = thumb.getAttribute('data-large');
+
         const modalImage = document.getElementById('modalImage');
         modalImage.src = ''; // clear previous image immediately
         modalImage.src = `${fullUrl}?t=${Date.now()}`; // unique URL disables cache
     });
+
 });

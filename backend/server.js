@@ -16,22 +16,20 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(session({
-    secret: 'your-very-secure-secret', // change this!
+    secret: 'your-very-secure-secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // true if using HTTPS
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 1 day
 }));
 
-function auth(req, res, next) {
-    if (req.session.user) {
-        // Disable caching for authenticated pages
-        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        next();
-    } else {
-        res.redirect('/login');
-    }
-}
 
+function auth(req, res, next) {
+    if (req.session.user === USER.username) {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        return next();
+    }
+    res.redirect('/login');
+}
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC, 'uploads');
@@ -126,11 +124,12 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     if (username === USER.username && password === USER.password) {
-        req.session.user = username;
-        return res.redirect('/admin.html'); // this triggers the browser redirect
+        req.session.user = username; // just the username
+        return res.redirect('/admin.html');
     }
-    res.status(401).send('Invalid credentials. Please try again.');
+    res.status(401).send('Invalid credentials');
 });
+
 
 // Logout route
 app.get('/logout', (req, res) => {
