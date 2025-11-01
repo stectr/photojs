@@ -8,32 +8,29 @@
     <link rel="icon" href="/favicons/favicon.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <!-- Login button top-right -->
-    <nav class="navbar navbar-light bg-light">
+    <nav class="navbar navbar-light" style="background-color: #1d1d1f;">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-                <img src="/favicons/500x500.png" alt="Icon" class="me-2" style="max-height:3.5em">
-                <h1 class="mb-0">ste</h1>
+                <img src="/favicons/500x500.png" alt="Icon" class="me-2" style="max-height:2.5em; filter: invert(1);">
+                <h1 class="mb-0 text-light" style="font-size: 2rem; font-weight: 400;">ste</h1>
             </div>
-            <div>
-                <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#loginModal">
-                    Login
-                </button>
-            </div>
+            <button type="button" class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#loginModal">
+                Login
+            </button>
         </div>
     </nav>
 
-    <!-- Simplified Login Modal -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="loginForm" class="p-4 py-1">
                     <div class="modal-header">
-                        <h4 class="modal-title" id="loginModalLabel">Login</h4>
+                        <h4 class="modal-title">Login</h4>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="mb-3">
@@ -55,47 +52,10 @@
         </div>
     </div>
 
-    <script>
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            loginError.style.display = 'none';
-            const formData = new FormData(loginForm);
-
-            try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    body: new URLSearchParams(formData),
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                });
-
-                if (res.redirected) {
-                    // Redirect after successful login
-                    window.location.href = res.url;
-                } else {
-                    // Show error
-                    const text = await res.text();
-                    loginError.textContent = text;
-                    loginError.style.display = 'block';
-                }
-            } catch (err) {
-                loginError.textContent = 'Network error. Please try again.';
-                loginError.style.display = 'block';
-            }
-        });
-    </script>
-
-    <!-- CRITICAL: Gallery -->
     <main class="container my-5">
         <div id="gallery" class="row"></div>
     </main>
 
-    <!-- Full Image Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -119,3 +79,36 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="/viewer.js"></script>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginError.style.display = 'none';
+            const formData = new FormData(loginForm);
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData),
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                });
+
+                if (res.redirected) {
+                    window.location.href = res.url;
+                } else {
+                    const text = await res.text();
+                    loginError.textContent = text;
+                    loginError.style.display = 'block';
+                }
+            } catch {
+                loginError.textContent = 'Network error. Please try again.';
+                loginError.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>
