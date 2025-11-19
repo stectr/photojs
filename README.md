@@ -1,5 +1,5 @@
 # photojs - [sctruong.com](https://sctruong.com)
-A very barebones secure photo gallery web application running on Oracle A1 with Ubuntu.
+A very barebones photo gallery web application running on Oracle A1 with Ubuntu.
 
 ### **Features:**
 - Node.js and Express backend. (Lowkey too lazy to set up Apache)
