@@ -23,7 +23,7 @@ app.use(session({
 }));
 
 // Constants
-const USER = { username: 'username', password: 'password' };
+const USER = { username: 'admin', password: 'SecurePassword!' };
 const PUBLIC = path.join(__dirname, '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC, 'uploads');
 const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');

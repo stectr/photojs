@@ -7,5 +7,6 @@ A very barebones photo gallery web application running on Oracle A1 with Ubuntu.
 - Basic user authentication login/logout.
 - Upload with custom labels.
 - Automatic thumbnail generation for faster browsing.
-- Modal image viewer for full-image rendering.
+- Modal image viewer for full-image rendering and saving.
 - Drag-and-drop photo re-ordering.
+- Resume uploading/updating
