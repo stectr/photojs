@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta name="robots" content="noindex">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ste - Gallery</title>
@@ -49,55 +50,38 @@
         </div>
     </div>
 
-    <!-- Resume Upload Section -->
-    <div class="container my-5">
-        <h4 class="mb-3">Resume Management</h4>
-        <div id="resumeUploadBar" class="d-flex gap-2 mb-2">
-            <input type="file" id="resumeInput" class="form-control" accept=".pdf">
-            <button id="uploadResumeBtn" class="btn btn-primary" disabled>Upload</button>
-        </div>
-        <div id="resumeProgressContainer" class="progress mb-4" style="display: none; height: 1.5rem;">
-            <div id="resumeProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-                role="progressbar" style="width: 0%; height: 100%; line-height: 1.5rem; font-size: 0.9rem;">0%</div>
-        </div>
-    </div>
-
     <footer class="text-center py-4">
-        <p class="mb-1">&copy; 2025 ste's website. All rights reserved. Just for fun (⌐■_■)</p>
-        <p class="mb-1">
-            <a href="http://mc.beeffilet.com:8100" class="text-success mx-2">Minecraft Server</a>
-        </p>
-        <a href="mailto:contact@sctruong.com" class="text-primary mx-2">Email</a> |
-        <a href="https://github.com/stectr" class="text-warning mx-2" target="_blank">GitHub</a> |
-        <a href="resume.pdf" class="text-danger mx-2" target="_blank">Resume</a>
+        <p class="mb-1">&copy; 2026 ste's website. All rights reserved. Just for fun (⌐■_■)</p>
+        <a href="https://map.beeffilet.com" class="text-success mx-2">Minecraft Server</a>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-        <script src="script.js"></script>
-        <script>
-            document.getElementById('logoutLink').onclick = () => window.location.href = '/index.html';
-            
-            // Resume upload
-            const resumeInput = document.getElementById('resumeInput');
-            const uploadResumeBtn = document.getElementById('uploadResumeBtn');
-            
-            resumeInput.onchange = () => {
-                uploadResumeBtn.disabled = !resumeInput.files.length;
-            };
-            
-            uploadResumeBtn.onclick = () => {
-                const file = resumeInput.files[0];
-                if (!file) return;
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('logoutLink').onclick = () => window.location.href = '/index.html';
 
-                const form = new FormData();
-                form.append('resume', file);
+        // Resume upload
+        const resumeInput = document.getElementById('resumeInput');
+        const uploadResumeBtn = document.getElementById('uploadResumeBtn');
 
-                uploadFile('/api/upload-resume', form, 'resumeProgressContainer', 'resumeProgressBar', () => {
-                    resumeInput.value = '';
-                    uploadResumeBtn.disabled = true;
-                });
-            };
-        </script>
-    </body>
+        resumeInput.onchange = () => {
+            uploadResumeBtn.disabled = !resumeInput.files.length;
+        };
+
+        uploadResumeBtn.onclick = () => {
+            const file = resumeInput.files[0];
+            if (!file) return;
+
+            const form = new FormData();
+            form.append('resume', file);
+
+            uploadFile('/api/upload-resume', form, 'resumeProgressContainer', 'resumeProgressBar', () => {
+                resumeInput.value = '';
+                uploadResumeBtn.disabled = true;
+            });
+        };
+    </script>
+</body>
+
 </html>

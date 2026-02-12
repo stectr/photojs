@@ -23,7 +23,7 @@ app.use(session({
 }));
 
 // Constants
-const USER = { username: 'username', password: 'password' };
+const USER = { username: 'placeholder', password: 'placeholder' };
 const PUBLIC = path.join(__dirname, '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC, 'uploads');
 const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');
@@ -94,12 +94,12 @@ app.get('/api/photos', (req, res) => {
 
 app.post('/api/upload', auth, upload.single('photo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file' });
-    
+
     const label = (req.body.name || '').trim() || req.file.filename;
     const entry = { filename: req.file.filename, label };
     const origPath = path.join(UPLOAD_DIR, req.file.filename);
     const thumbPath = path.join(THUMB_DIR, req.file.filename);
-    
+
     try {
         const meta = await sharp(origPath).metadata();
         await sharp(origPath)
@@ -121,7 +121,7 @@ app.post('/api/upload', auth, upload.single('photo'), async (req, res) => {
 app.post('/api/order', auth, (req, res) => {
     const arr = req.body;
     if (!Array.isArray(arr)) return res.status(400).json({ error: 'Array required' });
-    
+
     const existing = new Set(fs.readdirSync(UPLOAD_DIR));
     const filtered = arr.filter(e => existing.has(e.filename));
     writePhotos(filtered.map(e => ({ filename: e.filename, label: e.label })));
@@ -145,19 +145,6 @@ app.delete('/api/photo/:filename', auth, (req, res) => {
             writePhotos(photos);
             res.sendStatus(200);
         });
-    });
-});
-
-// Resume upload
-app.post('/api/upload-resume', auth, upload.single('resume'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
-    
-    const resumePath = path.join(PUBLIC, 'resume.pdf');
-    const uploadedPath = path.join(UPLOAD_DIR, req.file.filename);
-    
-    fs.rename(uploadedPath, resumePath, (err) => {
-        if (err) return res.status(500).json({ error: 'Error replacing resume: ' + err.message });
-        res.json({ message: 'Resume updated successfully', filename: 'resume.pdf' });
     });
 });
 

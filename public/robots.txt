@@ -1,11 +1,7 @@
 # robots.txt for https://www.sctruong.com
 
 User-agent: *
-Disallow: /admin/
-Disallow: /login/
-Disallow: /private/
-Disallow: /tmp/
-Disallow: /
+Disallow: /uploads/
 
 # Optional: Sitemap location
 # Sitemap: https://www.yoursite.com/sitemap.xml
