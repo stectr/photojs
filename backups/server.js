@@ -103,7 +103,6 @@ app.post('/api/upload', auth, upload.single('photo'), async (req, res) => {
     try {
         const meta = await sharp(origPath).metadata();
         await sharp(origPath)
-            .rotate()                          // ← reads EXIF and auto-rotates
             .resize(Math.round(meta.width * 0.25))
             .toFile(thumbPath);
     } catch (err) {
