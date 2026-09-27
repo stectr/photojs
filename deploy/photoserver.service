@@ -1,0 +1,13 @@
+[Unit]
+Description=Ste's Photo Server
+After=network.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/photoserver
+ExecStart=/usr/bin/node /home/ubuntu/photoserver/server.js
+Restart=always
+User=ubuntu
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
