@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { Fragment, useState, useRef, useCallback, useEffect } from "react";
+import { flushSync } from "react-dom";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = "photos123";
+const ADMIN_SESSION_COOKIE = "photoserver_admin";
 interface Photo {
     id: string;
     src: string;
@@ -20,6 +22,16 @@ function parseTags(raw: string): string[] {
         .filter(Boolean);
 }
 
+function setAdminSessionCookie(isAuthenticated: boolean): void {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    const value = isAuthenticated ? "1; Max-Age=2592000" : "; Max-Age=0";
+    document.cookie = `${ADMIN_SESSION_COOKIE}=${value}; Path=/; SameSite=Strict${secure}`;
+}
+
+function hasAdminSessionCookie(): boolean {
+    return document.cookie.split(";").some((cookie) => cookie.trim() === `${ADMIN_SESSION_COOKIE}=1`);
+}
+
 function tagInputWidth(value: string): number {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -28,20 +40,6 @@ function tagInputWidth(value: string): number {
     const textWidth = context.measureText(value).width;
     const letterSpacing = value.length * 0.44;
     return Math.max(80, Math.ceil(textWidth + letterSpacing + 19));
-}
-
-function packFilteredPhotos(photos: Photo[]): Photo[] {
-    const columns = Array.from({ length: 3 }, (_, column) => photos.filter((photo) => photo.column === column));
-    const rowOrdered: Photo[] = [];
-    const longestColumn = Math.max(0, ...columns.map((column) => column.length));
-
-    for (let row = 0; row < longestColumn; row += 1) {
-        columns.forEach((column) => {
-            if (column[row]) rowOrdered.push(column[row]);
-        });
-    }
-
-    return rowOrdered.map((photo, index) => ({ ...photo, column: index % 3 }));
 }
 
 async function fetchPhotos(): Promise<Photo[]> {
@@ -176,33 +174,136 @@ function PhotoGrid({
     onTagClick,
     onReorder,
     activeTags = [],
-    compactColumns = false,
+    denseGrid = false,
+    showTags = true,
 }: {
     photos: Photo[];
     onRemove?: (id: string) => void;
     onUpdateTags?: (id: string, tags: string[]) => void;
     onTagClick?: (tag: string) => void;
-    onReorder?: (draggedId: string, targetId: string | null, placeAfter: boolean, targetColumn: number) => void;
+    onReorder?: (draggedId: string, targetId: string, placeAfter: boolean) => void;
     activeTags?: string[];
-    compactColumns?: boolean;
+    denseGrid?: boolean;
+    showTags?: boolean;
 }) {
-    const displayPhotos = compactColumns ? packFilteredPhotos(photos) : photos;
     const [isSingleColumn, setIsSingleColumn] = useState(() => window.matchMedia("(max-width: 720px)").matches);
     const [lightbox, setLightbox] = useState<Photo | null>(null);
     const [editingTags, setEditingTags] = useState<string | null>(null);
     const [editingTag, setEditingTag] = useState<{ photoId: string; tag: string } | null>(null);
     const [tagInput, setTagInput] = useState("");
+    const [expandedTagPhotos, setExpandedTagPhotos] = useState<Set<string>>(() => new Set());
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dropTarget, setDropTarget] = useState<{ id: string; placeAfter: boolean } | null>(null);
-    const [dropColumn, setDropColumn] = useState<number | null>(null);
     const [draggedTag, setDraggedTag] = useState<{ photoId: string; tag: string } | null>(null);
-    const canReorder = Boolean(onReorder) && !isSingleColumn;
+    const [suppressRemoveId, setSuppressRemoveId] = useState<string | null>(null);
+    const [dragPointer, setDragPointer] = useState<{ x: number; y: number } | null>(null);
+    const pointerDragRef = useRef<{
+        photoId: string;
+        pointerId: number;
+        startX: number;
+        startY: number;
+        offsetX: number;
+        offsetY: number;
+        previewWidth: number;
+        previewHeight: number;
+        active: boolean;
+    } | null>(null);
+    const dropTargetRef = useRef<{ id: string; placeAfter: boolean } | null>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+    const dragPreviewRef = useRef<HTMLImageElement>(null);
+    const onReorderRef = useRef(onReorder);
+    onReorderRef.current = onReorder;
+    const canReorder = Boolean(onReorder) && denseGrid && !isSingleColumn;
 
     useEffect(() => {
         const mediaQuery = window.matchMedia("(max-width: 720px)");
         const update = () => setIsSingleColumn(mediaQuery.matches);
         mediaQuery.addEventListener("change", update);
         return () => mediaQuery.removeEventListener("change", update);
+    }, []);
+
+    useEffect(() => {
+        const updateDropTarget = (target: { id: string; placeAfter: boolean } | null) => {
+            const current = dropTargetRef.current;
+            if (current?.id === target?.id && current?.placeAfter === target?.placeAfter) return;
+            dropTargetRef.current = target;
+            setDropTarget(target);
+        };
+        const clearDrag = (commit: boolean) => {
+            const session = pointerDragRef.current;
+            if (!session) return;
+            if (commit && session.active && dropTargetRef.current) {
+                const target = dropTargetRef.current;
+                onReorderRef.current?.(session.photoId, target.id, target.placeAfter);
+                setSuppressRemoveId(target.id);
+            }
+            pointerDragRef.current = null;
+            setDraggedId(null);
+            setDragPointer(null);
+            updateDropTarget(null);
+        };
+        const onPointerMove = (event: PointerEvent) => {
+            const session = pointerDragRef.current;
+            if (!session || session.pointerId !== event.pointerId) return;
+            if (!session.active) {
+                if (Math.hypot(event.clientX - session.startX, event.clientY - session.startY) < 6) return;
+                session.active = true;
+                flushSync(() => {
+                    setDraggedId(session.photoId);
+                    setDragPointer({ x: event.clientX, y: event.clientY });
+                });
+                event.preventDefault();
+                return;
+            }
+            event.preventDefault();
+            const preview = dragPreviewRef.current;
+            if (preview) {
+                preview.style.left = `${event.clientX - session.offsetX}px`;
+                preview.style.top = `${event.clientY - session.offsetY}px`;
+            }
+
+            const grid = gridRef.current;
+            if (!grid) return;
+            const hovered = document.elementFromPoint(event.clientX, event.clientY);
+            const slot = hovered?.closest<HTMLElement>(".photo-grid-drop-slot");
+            if (slot?.dataset.sourceSlot !== "true" && slot?.dataset.targetId) {
+                updateDropTarget({ id: slot.dataset.targetId, placeAfter: slot.dataset.placeAfter === "true" });
+                return;
+            }
+            const cards = Array.from(grid.querySelectorAll<HTMLElement>(".photo-grid-item"))
+                .filter((card) => card.dataset.photoId !== session.photoId);
+            if (cards.length === 0) {
+                updateDropTarget(null);
+                return;
+            }
+            const nearest = cards.reduce<{ card: HTMLElement; distance: number } | null>((best, card) => {
+                const bounds = card.getBoundingClientRect();
+                const dx = Math.max(bounds.left - event.clientX, 0, event.clientX - bounds.right);
+                const dy = Math.max(bounds.top - event.clientY, 0, event.clientY - bounds.bottom);
+                const distance = dx * dx + dy * dy;
+                return !best || distance < best.distance ? { card, distance } : best;
+            }, null);
+            if (!nearest?.card.dataset.photoId) return;
+            const bounds = nearest.card.getBoundingClientRect();
+            updateDropTarget({
+                id: nearest.card.dataset.photoId,
+                placeAfter: event.clientX > bounds.left + bounds.width / 2,
+            });
+        };
+        const onPointerUp = (event: PointerEvent) => {
+            if (pointerDragRef.current?.pointerId === event.pointerId) clearDrag(true);
+        };
+        const onPointerCancel = (event: PointerEvent) => {
+            if (pointerDragRef.current?.pointerId === event.pointerId) clearDrag(false);
+        };
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerCancel);
+        return () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerCancel);
+        };
     }, []);
 
     const commitTags = (id: string) => {
@@ -225,64 +326,66 @@ function PhotoGrid({
         setTagInput("");
     };
 
-    const mobilePhotos: Photo[] = [];
-    const mobileColumns = Array.from({ length: 3 }, (_, column) => displayPhotos.filter((photo) => photo.column === column));
-    const longestColumn = Math.max(0, ...mobileColumns.map((column) => column.length));
-    for (let row = 0; row < longestColumn; row += 1) {
-        mobileColumns.forEach((column) => {
-            if (column[row]) mobilePhotos.push(column[row]);
-        });
-    }
+    const renderDropSlot = (targetId: string, placeAfter: boolean, sourceSlot = false) => (
+        <div
+            key={`drop-${targetId}-${placeAfter ? "after" : "before"}`}
+            className="photo-grid-drop-slot"
+            data-target-id={targetId}
+            data-place-after={placeAfter}
+            data-source-slot={sourceSlot}
+            aria-label="Photo insertion position"
+        />
+    );
 
     const renderPhoto = (photo: Photo) => (
         <div
             key={photo.id}
-            draggable={canReorder}
-            onDragOver={(e) => {
-                if (!canReorder || !draggedId || draggedId === photo.id || draggedTag) return;
-                e.preventDefault();
-                e.stopPropagation();
-                setDropTarget({ id: photo.id, placeAfter: false });
+            draggable={false}
+            onPointerDown={(event) => {
+                if (!canReorder || event.button !== 0 || draggedTag) return;
+                const target = event.target as HTMLElement;
+                if (target.closest("button, input, [draggable='true']")) return;
+                const bounds = event.currentTarget.getBoundingClientRect();
+                pointerDragRef.current = {
+                    photoId: photo.id,
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    offsetX: event.clientX - bounds.left,
+                    offsetY: event.clientY - bounds.top,
+                    previewWidth: bounds.width,
+                    previewHeight: bounds.height,
+                    active: false,
+                };
             }}
-            onDrop={(e) => {
-                if (!canReorder || !draggedId || draggedId === photo.id || draggedTag) return;
-                e.preventDefault();
-                e.stopPropagation();
-                onReorder(draggedId, photo.id, false, photo.column);
-                setDraggedId(null);
-                setDropTarget(null);
-                setDropColumn(null);
-            }}
-            onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", photo.id);
-                setDraggedId(photo.id);
-            }}
-            onDragEnd={() => { setDraggedId(null); setDropTarget(null); setDropColumn(null); }}
+            onPointerLeave={() => { if (suppressRemoveId === photo.id) setSuppressRemoveId(null); }}
+            data-photo-id={photo.id}
+            className="photo-grid-item"
             style={{
-                display: "flex", flexDirection: "column", gap: 8,
-                opacity: draggedId === photo.id ? 0.45 : 1,
+                position: "relative",
+                display: "flex", flexDirection: "column", gap: denseGrid ? 0 : 2,
                 cursor: canReorder ? "grab" : "default",
-                paddingTop: 2, paddingBottom: 2,
             }}
         >
             {/* Image */}
             <div
-                onClick={() => setLightbox(photo)}
                 style={{
-                    position: "relative", borderRadius: 10, overflow: "hidden",
-                    backgroundColor: "#e8e8ed", cursor: "pointer",
-                    outline: dropTarget?.id === photo.id && !dropTarget.placeAfter ? "2px solid #0071e3" : "none",
-                    outlineOffset: 3,
+                    position: "relative", width: "100%", aspectRatio: "1 / 1", overflow: "hidden",
                 }}
                 className="photo-card"
             >
                 <img
                     src={photo.src}
                     alt={photo.name}
+                    draggable={false}
+                    onClick={() => setLightbox(photo)}
                     loading="lazy"
                     decoding="async"
-                    style={{ width: "100%", height: "auto", display: "block" }}
+                    style={{
+                        width: "100%", height: "100%", maxWidth: "100%", objectFit: "cover",
+                        display: "block", cursor: "pointer",
+                        borderRadius: 8,
+                    }}
                     className="photo-img"
                 />
                 {onRemove && (
@@ -303,157 +406,161 @@ function PhotoGrid({
                 )}
             </div>
 
-            {/* Tags row */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingLeft: 2 }}>
-                {photo.tags.map((t) => editingTag?.photoId === photo.id && editingTag.tag === t ? (
-                    <form
-                        key={t}
-                        onSubmit={(e) => { e.preventDefault(); commitTagEdit(); }}
-                        style={{ display: "flex", gap: 4 }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <input
-                            autoFocus
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onBlur={commitTagEdit}
-                            placeholder="#TAG"
-                            style={{
-                                height: 24, borderRadius: 20, border: "1.5px solid #0071e3",
-                                padding: "0 8px", fontSize: 11, outline: "none",
-                                color: "#0071e3", width: tagInputWidth(tagInput), backgroundColor: "#e8f1fb",
-                                letterSpacing: "0.04em",
-                            }}
-                        />
-                    </form>
-                ) : (
-                    <span
-                        key={t}
-                        draggable={Boolean(onUpdateTags)}
-                        onDragStart={() => setDraggedTag({ photoId: photo.id, tag: t })}
-                        onDragEnd={() => setDraggedTag(null)}
-                        onDragOver={(e) => { if (onUpdateTags) e.preventDefault(); }}
-                        onDrop={(e) => {
-                            e.preventDefault();
-                            if (!onUpdateTags || !draggedTag || draggedTag.photoId !== photo.id || draggedTag.tag === t) return;
-                            const reordered = [...photo.tags];
-                            const draggedIndex = reordered.indexOf(draggedTag.tag);
-                            let targetIndex = reordered.indexOf(t);
-                            reordered.splice(draggedIndex, 1);
-                            if (draggedIndex < targetIndex) targetIndex -= 1;
-                            reordered.splice(targetIndex, 0, draggedTag.tag);
-                            onUpdateTags(photo.id, reordered);
-                            setDraggedTag(null);
-                        }}
-                        style={{ display: "inline-flex", cursor: onUpdateTags ? "grab" : "default" }}
-                    >
-                        <TagChip
-                            tag={t}
-                            active={activeTags.includes(t)}
-                            onClick={onUpdateTags ? () => {
-                                setEditingTag({ photoId: photo.id, tag: t });
-                                setTagInput(`#${t}`);
-                            } : onTagClick ? () => onTagClick(t) : undefined}
-                            onRemove={onUpdateTags ? () => onUpdateTags(photo.id, photo.tags.filter((x) => x !== t)) : undefined}
-                        />
-                    </span>
-                ))}
-                {onUpdateTags && (
-                    editingTags === photo.id ? (
-                        <form
-                            onSubmit={(e) => { e.preventDefault(); commitTags(photo.id); }}
-                            style={{ display: "flex", gap: 4 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <input
-                                autoFocus
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                onBlur={() => commitTags(photo.id)}
-                                placeholder="#TAG"
-                                style={{
-                                    height: 24, borderRadius: 20, border: "1.5px solid #0071e3",
-                                    padding: "0 8px", fontSize: 11, outline: "none",
-                                    color: "#0071e3", width: 80, backgroundColor: "#e8f1fb",
-                                    letterSpacing: "0.04em",
+            {!denseGrid && (showTags || onUpdateTags) && (
+                <>
+                    {/* Tags row */}
+                    <div className="photo-tags" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 5 }}>
+                        {photo.tags.slice(0, showTags && isSingleColumn && !onUpdateTags && !expandedTagPhotos.has(photo.id) ? 3 : undefined).map((t) => editingTag?.photoId === photo.id && editingTag.tag === t ? (
+                            <form
+                                key={t}
+                                onSubmit={(e) => { e.preventDefault(); commitTagEdit(); }}
+                                style={{ display: "flex", gap: 4 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <input
+                                    autoFocus
+                                    value={tagInput}
+                                    onChange={(e) => setTagInput(e.target.value)}
+                                    onBlur={commitTagEdit}
+                                    placeholder="#TAG"
+                                    style={{
+                                        height: 24, borderRadius: 20, border: "1.5px solid #0071e3",
+                                        padding: "0 8px", fontSize: 11, outline: "none",
+                                        color: "#0071e3", width: tagInputWidth(tagInput), backgroundColor: "#e8f1fb",
+                                        letterSpacing: "0.04em",
+                                    }}
+                                />
+                            </form>
+                        ) : (
+                            <span
+                                key={t}
+                                draggable={Boolean(onUpdateTags)}
+                                onDragStart={() => setDraggedTag({ photoId: photo.id, tag: t })}
+                                onDragEnd={() => setDraggedTag(null)}
+                                onDragOver={(e) => { if (onUpdateTags) e.preventDefault(); }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (!onUpdateTags || !draggedTag || draggedTag.photoId !== photo.id || draggedTag.tag === t) return;
+                                    const reordered = [...photo.tags];
+                                    const draggedIndex = reordered.indexOf(draggedTag.tag);
+                                    let targetIndex = reordered.indexOf(t);
+                                    reordered.splice(draggedIndex, 1);
+                                    if (draggedIndex < targetIndex) targetIndex -= 1;
+                                    reordered.splice(targetIndex, 0, draggedTag.tag);
+                                    onUpdateTags(photo.id, reordered);
+                                    setDraggedTag(null);
                                 }}
-                            />
-                        </form>
-                    ) : (
-                        <button
-                            onClick={() => {
-                                setEditingTags(photo.id);
-                                setTagInput("");
-                            }}
+                                style={{ display: "inline-flex", cursor: onUpdateTags ? "grab" : "default" }}
+                            >
+                                <TagChip
+                                    tag={t}
+                                    active={activeTags.includes(t)}
+                                    onClick={onUpdateTags ? () => {
+                                        setEditingTag({ photoId: photo.id, tag: t });
+                                        setTagInput(`#${t}`);
+                                    } : onTagClick ? () => onTagClick(t) : undefined}
+                                    onRemove={onUpdateTags ? () => onUpdateTags(photo.id, photo.tags.filter((x) => x !== t)) : undefined}
+                                />
+                            </span>
+                        ))}
+                        {showTags && isSingleColumn && !onUpdateTags && photo.tags.length > 3 && (
+                            <button
+                            type="button"
+                            onClick={() => setExpandedTagPhotos((current) => {
+                                const next = new Set(current);
+                                if (next.has(photo.id)) next.delete(photo.id);
+                                else next.add(photo.id);
+                                return next;
+                            })}
                             style={{
-                                height: 24, padding: "0 8px", borderRadius: 20,
-                                border: "1.5px dashed #d2d2d7", backgroundColor: "transparent",
-                                fontSize: 11, color: "#86868b", cursor: "pointer",
+                                border: 0, padding: "0 4px", background: "transparent",
+                                color: "#0071e3", fontSize: 11, cursor: "pointer",
                             }}
-                        >
-                            + tag
-                        </button>
-                    )
-                )}
-            </div>
+                            >
+                            {expandedTagPhotos.has(photo.id) ? "show less" : "show more"}
+                            </button>
+                        )}
+                        {onUpdateTags && (
+                            editingTags === photo.id ? (
+                                <form
+                                    onSubmit={(e) => { e.preventDefault(); commitTags(photo.id); }}
+                                    style={{ display: "flex", gap: 4 }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <input
+                                        autoFocus
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onBlur={() => commitTags(photo.id)}
+                                        placeholder="#TAG"
+                                        style={{
+                                            height: 24, borderRadius: 20, border: "1.5px solid #0071e3",
+                                            padding: "0 8px", fontSize: 11, outline: "none",
+                                            color: "#0071e3", width: 80, backgroundColor: "#e8f1fb",
+                                            letterSpacing: "0.04em",
+                                        }}
+                                    />
+                                </form>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setEditingTags(photo.id);
+                                        setTagInput("");
+                                    }}
+                                    style={{
+                                        height: 24, padding: "0 8px", borderRadius: 20,
+                                        border: "1.5px dashed #d2d2d7", backgroundColor: "transparent",
+                                        fontSize: 11, color: "#86868b", cursor: "pointer",
+                                    }}
+                                >
+                                    + tag
+                                </button>
+                            )
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     );
 
     return (
         <>
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                alignItems: canReorder ? "stretch" : "start",
-                gap: "24px 16px",
-            }} className={`photo-grid ${canReorder ? "photo-grid--arrange" : "photo-grid--mural"}`}>
-                {Array.from({ length: 3 }, (_, column) => {
-                    const columnPhotos = displayPhotos.filter((photo) => photo.column === column);
+            <div
+                ref={gridRef}
+                className={`photo-grid${denseGrid ? " photo-grid--dense" : ""}${draggedId ? " photo-grid--dragging" : ""}${suppressRemoveId ? " photo-grid--suppress-remove" : ""}`}
+            >
+                {photos.map((photo) => {
+                    if (photo.id === draggedId) {
+                        return <Fragment key={photo.id}>{!dropTarget && renderDropSlot(photo.id, false, true)}</Fragment>;
+                    }
                     return (
-                        <div
-                            className="photo-column"
-                            key={column}
-                            onDragOver={(e) => {
-                                if (!canReorder || !draggedId) return;
-                                e.preventDefault();
-                                if (e.currentTarget === e.target) setDropTarget(null);
-                            }}
-                            onDragEnter={() => { if (canReorder && draggedId) setDropColumn(column); }}
-                            onDragLeave={(e) => {
-                                if (e.currentTarget === e.target) setDropColumn(null);
-                            }}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (canReorder && draggedId) onReorder(draggedId, null, true, column);
-                                setDraggedId(null);
-                                setDropTarget(null);
-                                setDropColumn(null);
-                            }}
-                            style={{
-                                width: "100%",
-                                gridColumn: column + 1,
-                                outline: canReorder && dropColumn === column && !dropTarget ? "2px dashed #0071e3" : "2px dashed transparent",
-                                outlineOffset: 6,
-                                borderRadius: 8,
-                            }}
-                        >
-                            {canReorder && columnPhotos.length === 0 && (
-                                <div style={{
-                                    minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center",
-                                    border: "1.5px dashed #d2d2d7", borderRadius: 10, color: "#86868b", fontSize: 12,
-                                }}>
-                                    drop photos here
-                                </div>
-                            )}
-                            {columnPhotos.map(renderPhoto)}
-                        </div>
+                        <Fragment key={photo.id}>
+                            {dropTarget?.id === photo.id && !dropTarget.placeAfter && renderDropSlot(photo.id, false)}
+                            {renderPhoto(photo)}
+                            {dropTarget?.id === photo.id && dropTarget.placeAfter && renderDropSlot(photo.id, true)}
+                        </Fragment>
                     );
                 })}
             </div>
-            <div className="photo-grid-mobile">
-                {mobilePhotos.map(renderPhoto)}
-            </div>
+            {draggedId && dragPointer && (
+                <img
+                    ref={dragPreviewRef}
+                    src={photos.find((photo) => photo.id === draggedId)?.src}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    style={{
+                        position: "fixed",
+                        left: dragPointer.x - (pointerDragRef.current?.offsetX ?? 60),
+                        top: dragPointer.y - (pointerDragRef.current?.offsetY ?? 60),
+                        width: pointerDragRef.current?.previewWidth ?? 120,
+                        height: pointerDragRef.current?.previewHeight ?? 120,
+                        objectFit: "contain",
+                        borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+                        opacity: 0.9, pointerEvents: "none", zIndex: 60,
+                    }}
+                />
+            )}
             {lightbox && <Lightbox photo={lightbox} onClose={() => setLightbox(null)} />}
         </>
     );
@@ -629,7 +736,7 @@ function GalleryPage({ photos }: { photos: Photo[] }) {
             <Nav>
                 <a href="#/admin" style={navLink}>admin</a>
             </Nav>
-            <main className="main-wrap" style={mainWrap}>
+            <main className="main-wrap gallery-main" style={mainWrap}>
                 {photos.length === 0 ? (
                     <div style={emptyState}>
                         <p style={{ fontSize: 15, color: "#86868b" }}>no photos yet.</p>
@@ -639,7 +746,7 @@ function GalleryPage({ photos }: { photos: Photo[] }) {
                         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 28 }}>
                             <h1 style={{ ...pageTitle, marginBottom: 0 }}>gallery</h1>
                             <span style={{ fontSize: 13, color: "#86868b" }}>
-                                {filtered.length === photos.length ? photos.length : `${filtered.length} of ${photos.length}`}{" "}
+                                {filtered.length === photos.length ? photos.length : `${filtered.length} of ${photos.length}`} {" "}
                                 {photos.length === 1 ? "photo" : "photos"}
                             </span>
                         </div>
@@ -652,7 +759,6 @@ function GalleryPage({ photos }: { photos: Photo[] }) {
                             <PhotoGrid
                                 photos={filtered}
                                 activeTags={activeTags}
-                                compactColumns={activeTags.length > 0}
                                 onTagClick={(tag) => setActiveTags((current) => current.includes(tag)
                                     ? current.filter((item) => item !== tag)
                                     : [...current, tag])}
@@ -717,7 +823,7 @@ function AdminPage({
     onAdd: (file: File, tags: string[], onProgress: (progress: number) => void, signal: AbortSignal) => Promise<void>;
     onRemove: (id: string) => void;
     onUpdateTags: (id: string, tags: string[]) => void;
-    onReorder: (draggedId: string, targetId: string | null, placeAfter: boolean, targetColumn: number) => void;
+    onReorder: (draggedId: string, targetId: string, placeAfter: boolean) => void;
     onLogout: () => void;
 }) {
     const [dragging, setDragging] = useState(false);
@@ -725,6 +831,7 @@ function AdminPage({
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [activeTags, setActiveTags] = useState<string[]>([]);
+    const [denseGrid, setDenseGrid] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const allTags = Array.from(new Set(photos.flatMap((p) => p.tags))).sort((a, b) => a.localeCompare(b));
@@ -778,10 +885,16 @@ function AdminPage({
             <main className="main-wrap" style={mainWrap}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 32 }}>
                     <h1 style={pageTitle}>manage photos</h1>
-                    <span style={{ fontSize: 13, color: "#86868b" }}>
-                        {filtered.length === photos.length ? photos.length : `${filtered.length} of ${photos.length}`}{" "}
-                        {photos.length === 1 ? "photo" : "photos"}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <span style={{ fontSize: 13, color: "#86868b" }}>
+                            {filtered.length === photos.length ? photos.length : `${filtered.length} of ${photos.length}`} {" "}
+                            {photos.length === 1 ? "photo" : "photos"}
+                        </span>
+                        <div className="layout-toggle" aria-label="Photo grid layout">
+                            <button type="button" aria-pressed={!denseGrid} onClick={() => setDenseGrid(false)}>3 columns</button>
+                            <button type="button" aria-pressed={denseGrid} onClick={() => setDenseGrid(true)}>Dense</button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Upload zone */}
@@ -815,7 +928,7 @@ function AdminPage({
                             onRemove={onRemove}
                             onUpdateTags={onUpdateTags}
                             activeTags={activeTags}
-                            compactColumns={activeTags.length > 0}
+                            denseGrid={denseGrid}
                             onReorder={activeTags.length === 0 ? onReorder : undefined}
                         />
                     </>
@@ -909,7 +1022,10 @@ function useHash() {
 export default function App() {
     const hash = useHash();
     const [photos, setPhotos] = useState<Photo[]>([]);
-    const [authed, setAuthed] = useState(false);
+    const [authed, setAuthed] = useState(hasAdminSessionCookie);
+
+    const photosRef = useRef<Photo[]>([]);
+    useEffect(() => { photosRef.current = photos; }, [photos]);
 
     useEffect(() => {
         fetchPhotos().then(setPhotos).catch((error) => console.error(error));
@@ -917,12 +1033,13 @@ export default function App() {
 
     const addPhoto = async (file: File, tags: string[], onProgress: (progress: number) => void, signal: AbortSignal) => {
         const counts = [0, 0, 0];
-        photos.forEach((photo) => {
+        photosRef.current.forEach((photo) => {
             if (photo.column >= 0 && photo.column < 3) counts[photo.column] += 1;
         });
         const column = counts.indexOf(Math.min(...counts));
         const photo = await uploadPhoto(file, tags, column, onProgress, signal);
-        setPhotos((prev) => [...prev, { ...photo, column }]);
+        photosRef.current = [{ ...photo, column }, ...photosRef.current];
+        setPhotos(photosRef.current);
     };
 
     const removePhoto = async (id: string) => {
@@ -942,36 +1059,40 @@ export default function App() {
         setPhotos((prev) => prev.map((photo) => photo.id === id ? { ...photo, ...updated } : photo));
     };
 
-    const reorderPhotos = async (draggedId: string, targetId: string | null, placeAfter: boolean, targetColumn: number) => {
-        const columns = Array.from({ length: 3 }, (_, column) => photos.filter((photo) => photo.column === column));
-        const sourceColumn = columns.findIndex((column) => column.some((photo) => photo.id === draggedId));
-        if (sourceColumn < 0 || targetColumn < 0 || targetColumn > 2) return;
-        const draggedIndex = columns[sourceColumn].findIndex((photo) => photo.id === draggedId);
-        const [draggedPhoto] = columns[sourceColumn].splice(draggedIndex, 1);
-        draggedPhoto.column = targetColumn;
-        const targetIndex = targetId ? columns[targetColumn].findIndex((photo) => photo.id === targetId) : -1;
-        const insertionIndex = targetIndex < 0 ? columns[targetColumn].length : targetIndex + (placeAfter ? 1 : 0);
-        columns[targetColumn].splice(insertionIndex, 0, draggedPhoto);
-        const next = columns.flat();
+    const reorderPhotos = async (draggedId: string, targetId: string, placeAfter: boolean) => {
+        const next = [...photos];
+        const draggedIndex = next.findIndex((photo) => photo.id === draggedId);
+        if (draggedIndex < 0) return;
+        const [draggedPhoto] = next.splice(draggedIndex, 1);
+        const targetIndex = next.findIndex((photo) => photo.id === targetId);
+        if (targetIndex < 0) return;
+        next.splice(targetIndex + (placeAfter ? 1 : 0), 0, draggedPhoto);
         setPhotos(next);
 
         const response = await fetch("/api/photos/order", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                columns: columns.map((column) => column.map((photo) => photo.id)),
                 ids: next.map((photo) => photo.id),
             }),
         });
         if (!response.ok) fetchPhotos().then(setPhotos).catch((error) => console.error(error));
     };
 
-    const logout = () => { setAuthed(false); window.location.hash = "#/"; };
+    const login = () => {
+        setAdminSessionCookie(true);
+        setAuthed(true);
+    };
+    const logout = () => {
+        setAdminSessionCookie(false);
+        setAuthed(false);
+        window.location.hash = "#/";
+    };
 
     const isAdmin = hash.startsWith("#/admin");
 
     if (isAdmin) {
-        if (!authed) return <LoginPage onLogin={() => setAuthed(true)} />;
+        if (!authed) return <LoginPage onLogin={login} />;
         return (
             <>
                 <AdminPage photos={photos} onAdd={addPhoto} onRemove={removePhoto} onUpdateTags={updateTags} onReorder={reorderPhotos} onLogout={logout} />
@@ -995,68 +1116,88 @@ function PhotoCardStyles() {
         max-width: 1500px;
         padding: 44px 16px 80px;
       }
+      .gallery-main {
+        max-width: 1100px;
+      }
       .photo-grid {
+        position: relative;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 24px 16px;
-      }
-      .photo-grid-mobile {
-        display: none;
-      }
-      .photo-grid--mural {
         align-items: start;
-      }
-      .photo-grid--arrange {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        grid-auto-flow: row;
-        align-items: start;
-        gap: 24px 16px;
+        column-gap: 16px;
+        row-gap: 16px;
       }
       .photo-grid > div {
-        break-inside: avoid;
-        margin-bottom: 12px;
-      }
-      .photo-grid--arrange > div {
         min-width: 0;
-        margin-bottom: 0;
       }
-      .photo-column {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-        min-width: 0;
-        min-height: 80px;
-      }
-      .photo-column > div {
-        margin-bottom: 0;
-      }
+            .photo-grid-drop-slot {
+                aspect-ratio: 1 / 1;
+                min-width: 0;
+                border: 1px solid rgba(0, 113, 227, 0.42);
+                border-radius: 14px;
+                background: linear-gradient(145deg, rgba(0, 113, 227, 0.11), rgba(0, 113, 227, 0.045));
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 5px 16px rgba(0, 81, 180, 0.08);
+                animation: photo-slot-enter 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            }
+            @keyframes photo-slot-enter {
+                from { opacity: 0; transform: scale(0.94); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .photo-grid-drop-slot { animation: none; }
+            }
+            .photo-grid--dense {
+                grid-template-columns: repeat(8, minmax(0, 1fr));
+                column-gap: 12px;
+                row-gap: 12px;
+            }
+            .layout-toggle {
+                display: inline-flex;
+                gap: 2px;
+                padding: 3px;
+                border: 1px solid #d2d2d7;
+                border-radius: 8px;
+                background: #e8e8ed;
+            }
+            .layout-toggle button {
+                padding: 5px 9px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: #68686d;
+                font-size: 12px;
+                white-space: nowrap;
+                cursor: pointer;
+            }
+            .layout-toggle button[aria-pressed="true"] {
+                background: #fff;
+                color: #1d1d1f;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+            }
+            @media (max-width: 960px) {
+                .photo-grid--dense {
+                    grid-template-columns: repeat(6, minmax(0, 1fr));
+                }
+            }
       @media (max-width: 720px) {
         .main-wrap {
           padding: 32px 16px 64px;
         }
         .photo-grid {
-          display: none !important;
+          grid-template-columns: minmax(0, 1fr);
+          row-gap: 16px;
         }
-        .photo-grid-mobile {
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-        }
-        .photo-grid--arrange {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
-        }
-        .photo-column {
-          width: 100%;
-          gap: 18px;
-        }
-      }
-      @media (min-width: 721px) and (max-width: 960px) {
-        .photo-grid--arrange { gap: 16px 12px; }
+                .photo-grid--dense {
+                    grid-template-columns: minmax(0, 1fr);
+                    row-gap: 12px;
+                }
       }
       .photo-card:hover .remove-btn { opacity: 1 !important; }
+            .photo-grid--dragging .remove-btn,
+            .photo-grid--suppress-remove .remove-btn {
+                opacity: 0 !important;
+                pointer-events: none;
+            }
     `}</style>
     );
 }

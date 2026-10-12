@@ -17,6 +17,7 @@ const photosDir = path.join(__dirname, "photos");
 const thumbnailsDir = path.join(photosDir, "thumbnails");
 const metadataPath = path.join(__dirname, "photos.json");
 const publicDir = path.join(__dirname, "dist");
+const thumbnailSize = 1200;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const execFileAsync = promisify(execFile);
 
@@ -69,7 +70,7 @@ async function createThumbnail(photo) {
     const thumbnailPath = path.join(thumbnailsDir, thumbnailFilename(photo.filename));
     await sharp(originalPath)
         .rotate()
-        .resize({ width: 600, withoutEnlargement: true })
+        .resize({ width: thumbnailSize, height: thumbnailSize, fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 82 })
         .toFile(thumbnailPath);
 }
@@ -81,10 +82,20 @@ async function refreshCroppedThumbnails() {
         const thumbnailPath = path.join(thumbnailsDir, thumbnailFilename(photo.filename));
         try {
             const [original, thumbnail] = await Promise.all([
-                sharp(originalPath).metadata(),
+                sharp(originalPath).rotate().metadata(),
                 sharp(thumbnailPath).metadata(),
             ]);
-            if (original.width && original.height && thumbnail.width === 600 && thumbnail.height === 600 && original.width !== original.height) {
+            if (!original.width || !original.height || !thumbnail.width || !thumbnail.height) return;
+            const orientationSwapsDimensions = [5, 6, 7, 8].includes(original.orientation);
+            const originalWidth = orientationSwapsDimensions ? original.height : original.width;
+            const originalHeight = orientationSwapsDimensions ? original.width : original.height;
+            const originalRatio = originalWidth / originalHeight;
+            const thumbnailRatio = thumbnail.width / thumbnail.height;
+            const originalSize = Math.max(originalWidth, originalHeight);
+            const thumbnailLongestSide = Math.max(thumbnail.width, thumbnail.height);
+            const expectedLongestSide = Math.min(originalSize, thumbnailSize);
+            const ratioMatches = Math.abs(Math.log(thumbnailRatio / originalRatio)) < 0.01;
+            if (thumbnailLongestSide < expectedLongestSide || !ratioMatches) {
                 await createThumbnail(photo);
             }
         } catch { }
@@ -133,7 +144,7 @@ app.post("/api/photos", upload.single("photo"), async (req, res) => {
         await image.toFile(originalPath);
         await sharp(sourceBuffer)
             .rotate()
-            .resize({ width: 600, withoutEnlargement: true })
+            .resize({ width: thumbnailSize, height: thumbnailSize, fit: "inside", withoutEnlargement: true })
             .jpeg({ quality: 82 })
             .toFile(thumbnailPath);
 
@@ -147,7 +158,7 @@ app.post("/api/photos", upload.single("photo"), async (req, res) => {
             column,
         };
         const photos = await readPhotos();
-        await writePhotos([...photos, photo]);
+        await writePhotos([photo, ...photos]);
         return res.status(201).json(photoResponse(photo));
     } catch (error) {
         await Promise.all([
