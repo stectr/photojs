@@ -30,7 +30,10 @@
     "tags": [
       "RICOH GRIV"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "RICOH GRIV": "camera"
+    }
   },
   {
     "id": "1789171611716-30ab4308-7557-4374-a7ab-1da100c2aed0",
@@ -64,7 +67,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1791013519401-221baf15-952a-4525-a0c2-58ccf5ee3711",
@@ -76,7 +82,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789200767659-f377cb87-41db-4382-afff-9bdd1627ba29",
@@ -88,7 +97,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789200985485-24a1e7d0-37d5-490f-96a4-f1bc9adac18c",
@@ -100,7 +112,10 @@
       "PENTAX 17",
       "KODAK GOLD 200"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789172136469-642f8e6d-fa5e-4d4f-b4c6-6f4685caa036",
@@ -112,7 +127,10 @@
       "PENTAX 17",
       "KODAK GOLD 200"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789201073199-f8aa19b7-0df0-4488-bf7e-6e852d53b8a7",
@@ -124,7 +142,10 @@
       "KODAK GOLD 200",
       "PENTAX 17"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789201892887-62e18a47-ecd8-4d73-bee1-d61b24e87138",
@@ -148,7 +169,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202830270-74f8b232-30f7-4b7c-9835-573ec5e95068",
@@ -161,7 +186,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202794852-28fa16b5-5c51-4dfb-aac7-54a86a2afa06",
@@ -174,7 +203,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202693121-18381226-6354-46ea-9770-008c90d1cb47",
@@ -187,7 +220,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202726421-16eed142-c41e-4af7-afba-17545fac32dc",
@@ -200,7 +237,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202922309-61adf72a-ba0c-421a-8e72-8cde2a56405b",
@@ -213,7 +254,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202900399-62406562-f3c2-45ac-bff3-87b5df6f8047",
@@ -226,7 +271,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789202755992-97f04306-ccff-48f4-a5bf-64f48a93198a",
@@ -239,7 +288,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789416482800-7a05788a-5e17-4c55-b926-44daf6661bbb",
@@ -252,7 +305,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789203177509-80acb376-0b03-4680-852f-6a1bfe058d3a",
@@ -265,7 +322,11 @@
       "ILFORD HP5 PLUS",
       "NIKON NIKKOR 135MM F2.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "NIKON NIKKOR 135MM F2.8 AI": "lens",
+      "ILFORD HP5 PLUS": "filmStock"
+    }
   },
   {
     "id": "1789203155641-cf38ca29-6cf3-43e7-823e-179971451173",
@@ -278,7 +339,11 @@
       "ILFORD HP5 PLUS",
       "NIKON NIKKOR 135MM F2.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "NIKON NIKKOR 135MM F2.8 AI": "lens",
+      "ILFORD HP5 PLUS": "filmStock"
+    }
   },
   {
     "id": "1789203192387-243a448a-3fe9-48e6-82e7-4a986e71b041",
@@ -291,7 +356,11 @@
       "ILFORD HP5 PLUS",
       "NIKON NIKKOR 135MM F2.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "NIKON NIKKOR 135MM F2.8 AI": "lens",
+      "ILFORD HP5 PLUS": "filmStock"
+    }
   },
   {
     "id": "1789203609209-4ea2747f-119e-40c2-b6d4-297d4530649e",
@@ -304,7 +373,11 @@
       "ILFORD HP5 PLUS",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "NIKON NIKKOR 50MM F1.8 AI": "lens",
+      "ILFORD HP5 PLUS": "filmStock"
+    }
   },
   {
     "id": "1789203261279-e6f64e5f-c111-4985-9295-6625c391bc7c",
@@ -317,7 +390,11 @@
       "KODAK PRO IMAGE 100",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "NIKON NIKKOR 50MM F1.8 AI": "lens",
+      "KODAK PRO IMAGE 100": "filmStock"
+    }
   },
   {
     "id": "1789203346954-fe58661f-17c7-4292-b0b2-ec5482632bfd",
@@ -330,7 +407,11 @@
       "KODAK PRO IMAGE 100",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "NIKON NIKKOR 50MM F1.8 AI": "lens",
+      "KODAK PRO IMAGE 100": "filmStock"
+    }
   },
   {
     "id": "1789203094776-d0ee95a4-efe0-445b-b79b-6ac807de8d75",
@@ -342,7 +423,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789171899027-81264fb7-15b7-47a0-a9c4-cff991556fa2",
@@ -354,7 +438,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789203016756-c9b900cb-ec6d-49e7-bdd9-6c14574379a3",
@@ -366,7 +453,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789202995440-8a760bd5-12bc-4d2b-930f-2c4d024887df",
@@ -378,7 +468,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789203045544-58f1c81d-bc45-411d-80ca-180a704fcec2",
@@ -390,7 +483,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789416317754-2c0754cf-e344-486b-bed0-24bed3d5f971",
@@ -403,7 +499,11 @@
       "KODAK ULTRAMAX 400",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789204003108-a6ecbc3a-0c99-4e1b-8c3f-976a36fbdc33",
@@ -416,7 +516,11 @@
       "KODAK ULTRAMAX 400",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789203545714-1efc3dfe-7f1f-43df-9294-0d2f795b31b8",
@@ -429,7 +533,11 @@
       "KODAK GOLD 200",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789203844053-d322bb95-1f86-4cc2-8a2a-f15d1828b917",
@@ -442,7 +550,11 @@
       "KODAK ULTRAMAX 400",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789203523417-d49bcbc6-bcc8-49d8-b87a-fba442beb534",
@@ -455,7 +567,11 @@
       "KODAK GOLD 200",
       "VIVITAR 35-75 F2.8-3.2"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock",
+      "VIVITAR 35-75 F2.8-3.2": "lens"
+    }
   },
   {
     "id": "1789203437633-677694fa-d78d-4df5-aee8-1531eab12419",
@@ -467,7 +583,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK PRO IMAGE 100"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK PRO IMAGE 100": "filmStock"
+    }
   },
   {
     "id": "1789203862887-e98edae0-2095-4f61-8182-e88f1615f3dc",
@@ -480,7 +599,11 @@
       "KODAK ULTRAMAX 400",
       "NIKON NIKKOR 50MM F1.8 AI"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock",
+      "NIKON NIKKOR 50MM F1.8 AI": "lens"
+    }
   },
   {
     "id": "1789203754647-49c9a29e-ebe6-43da-9943-61838105a1e6",
@@ -492,7 +615,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789203728850-b0c386c3-5946-4f88-b192-34fcc2eacfc5",
@@ -504,7 +630,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204359795-bfe44455-bfb7-41c9-a775-aa5158ab8f2d",
@@ -516,7 +645,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204414761-0037a698-4c6c-4bf3-8e16-04b8d205bc1d",
@@ -528,7 +660,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204782811-09f3d2a1-e88a-45be-b4df-743c7566dd2c",
@@ -540,7 +675,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204497752-552d2088-a0e2-48e8-bdc0-f1a96697c114",
@@ -552,7 +690,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789204900579-42ca02e8-bab3-4b47-86a1-46b9dc6ba777",
@@ -564,7 +705,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204962727-e892b5e8-9354-4902-a48d-f7f542755246",
@@ -576,7 +720,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789204665023-77627a3f-2501-4792-93cf-3880448239a7",
@@ -588,7 +735,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789202136966-6a6a4181-5697-40b8-989a-0021727ccaeb",
@@ -611,7 +761,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204646141-3f94318a-cbe5-4ec1-8aa4-93593e88a5b1",
@@ -623,7 +776,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789204627057-f794fff6-ff7a-4fa5-914f-cf910291f3f0",
@@ -635,7 +791,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK ULTRAMAX 400"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "KODAK ULTRAMAX 400": "filmStock"
+    }
   },
   {
     "id": "1789205455112-557dc69a-6773-4337-bb96-ec3b465aaa8d",
@@ -724,7 +883,10 @@
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 1
+    "column": 1,
+    "tagCategories": {
+      "KODAK GOLD 200": "filmStock"
+    }
   },
   {
     "id": "1789205881851-07352cc2-cad4-4fda-857c-db99de336ae2",
@@ -791,7 +953,10 @@
       "NIKON ZF C",
       "7ARTISANS 35MM F1.4 II"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "7ARTISANS 35MM F1.4 II": "lens"
+    }
   },
   {
     "id": "1789206034009-f8d24b74-3302-4a80-85eb-c9b294cc65a3",
@@ -803,7 +968,10 @@
       "NIKON ZF C",
       "7ARTISANS 35MM F1.4 II"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "7ARTISANS 35MM F1.4 II": "lens"
+    }
   },
   {
     "id": "1789207132738-fb6130c4-ce18-4024-b607-a8781e0e11eb",
@@ -815,7 +983,10 @@
       "NIKON ZF C",
       "7ARTISANS 35MM F1.4 II"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "7ARTISANS 35MM F1.4 II": "lens"
+    }
   },
   {
     "id": "1789205648898-5054bf82-5036-45c8-9c83-747e606ff4c5",
@@ -827,7 +998,10 @@
       "NIKON ZF C",
       "7ARTISANS 35MM F1.4 II"
     ],
-    "column": 2
+    "column": 2,
+    "tagCategories": {
+      "7ARTISANS 35MM F1.4 II": "lens"
+    }
   },
   {
     "id": "1789205801826-94910ee1-7bb2-4206-990b-4d9a8f8bbf74",
@@ -850,7 +1024,10 @@
       "SONY A6000",
       "MEIKE 35MM F1.7"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "MEIKE 35MM F1.7": "lens"
+    }
   },
   {
     "id": "1789205767581-746f24f2-9b2b-4c5d-9b88-3e7f7e7db8e6",
@@ -862,7 +1039,10 @@
       "SONY A6000",
       "MEIKE 35MM F1.7"
     ],
-    "column": 0
+    "column": 0,
+    "tagCategories": {
+      "MEIKE 35MM F1.7": "lens"
+    }
   },
   {
     "id": "1789205822785-bfc824a8-a1e3-4af4-b897-aa1356c5ef76",

@@ -4,6 +4,12 @@ import { flushSync } from "react-dom";
 // ─── constants ────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = "photos123";
 const ADMIN_SESSION_COOKIE = "photoserver_admin";
+type TagCategory = "camera" | "lens" | "filmStock";
+const tagCategories: { value: TagCategory; label: string }[] = [
+    { value: "camera", label: "cameras" },
+    { value: "lens", label: "lenses" },
+    { value: "filmStock", label: "film stocks" },
+];
 interface Photo {
     id: string;
     src: string;
@@ -12,7 +18,38 @@ interface Photo {
     width: number;
     height: number;
     tags: string[];
+    tagCategories?: Record<string, TagCategory>;
     column: number;
+}
+
+function categoryForTag(photo: Photo, tag: string): TagCategory {
+    return photo.tagCategories?.[tag] ?? "camera";
+}
+
+function orderedPhotoTags(photo: Photo): string[] {
+    const categoryOrder = new Map(tagCategories.map(({ value }, index) => [value, index]));
+    return photo.tags
+        .map((tag, index) => ({ tag, index, category: categoryForTag(photo, tag) }))
+        .sort((a, b) => categoryOrder.get(a.category)! - categoryOrder.get(b.category)! || a.index - b.index)
+        .map(({ tag }) => tag);
+}
+
+function collectTags(photos: Photo[], include: string[] = []): { tags: string[]; categories: Record<string, TagCategory> } {
+    const categories: Record<string, TagCategory> = {};
+    const categoryOrder = new Map(tagCategories.map(({ value }, index) => [value, index]));
+    for (const photo of photos) {
+        for (const tag of photo.tags) {
+            const category = categoryForTag(photo, tag);
+            const current = categories[tag];
+            if (!current || categoryOrder.get(category)! < categoryOrder.get(current)!) categories[tag] = category;
+        }
+    }
+    for (const tag of include) categories[tag] ??= "camera";
+    return {
+        categories,
+        tags: Object.keys(categories).sort((a, b) =>
+            categoryOrder.get(categories[a])! - categoryOrder.get(categories[b])! || a.localeCompare(b)),
+    };
 }
 
 function parseTags(raw: string): string[] {
@@ -52,12 +89,13 @@ async function fetchPhotos(): Promise<Photo[]> {
     }));
 }
 
-function uploadPhoto(file: File, tags: string[], column: number, onProgress: (progress: number) => void, signal?: AbortSignal): Promise<Photo> {
+function uploadPhoto(file: File, tags: string[], categories: Record<string, TagCategory>, column: number, onProgress: (progress: number) => void, signal?: AbortSignal): Promise<Photo> {
     return new Promise((resolve, reject) => {
         const request = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("photo", file);
         formData.append("tags", tags.join(","));
+        formData.append("tagCategories", JSON.stringify(categories));
         formData.append("column", String(column));
         request.open("POST", "/api/photos");
         request.upload.onprogress = (event) => {
@@ -152,7 +190,7 @@ function Lightbox({ photo, onClose }: { photo: Photo; onClose: () => void }) {
             }}>
                 {photo.tags.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                        {photo.tags.map((t) => (
+                        {orderedPhotoTags(photo).map((t) => (
                             <span key={t} style={{
                                 fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.55)",
                                 backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20,
@@ -179,7 +217,7 @@ function PhotoGrid({
 }: {
     photos: Photo[];
     onRemove?: (id: string) => void;
-    onUpdateTags?: (id: string, tags: string[]) => void;
+    onUpdateTags?: (id: string, tags: string[], categories: Record<string, TagCategory>) => void;
     onTagClick?: (tag: string) => void;
     onReorder?: (draggedId: string, targetId: string, placeAfter: boolean) => void;
     activeTags?: string[];
@@ -308,10 +346,13 @@ function PhotoGrid({
 
     const commitTags = (id: string) => {
         if (!onUpdateTags) return;
-        const existing = photos.find((p) => p.id === id)?.tags ?? [];
+        const photo = photos.find((p) => p.id === id);
+        const existing = photo?.tags ?? [];
         const added = parseTags(tagInput);
         const merged = Array.from(new Set([...existing, ...added]));
-        onUpdateTags(id, merged);
+        const categories = { ...photo?.tagCategories };
+        for (const tag of merged) categories[tag] ??= "camera";
+        onUpdateTags(id, merged, categories);
         setEditingTags(null);
         setTagInput("");
     };
@@ -321,7 +362,11 @@ function PhotoGrid({
         if (!photo) return;
         const replacement = parseTags(tagInput);
         const updated = Array.from(new Set(photo.tags.flatMap((tag) => tag === editingTag.tag ? replacement : [tag])));
-        onUpdateTags(photo.id, updated);
+        const categories = { ...photo.tagCategories };
+        const previousCategory = categoryForTag(photo, editingTag.tag);
+        delete categories[editingTag.tag];
+        for (const tag of replacement) categories[tag] ??= previousCategory;
+        onUpdateTags(photo.id, updated, categories);
         setEditingTag(null);
         setTagInput("");
     };
@@ -344,7 +389,7 @@ function PhotoGrid({
             onPointerDown={(event) => {
                 if (!canReorder || event.button !== 0 || draggedTag) return;
                 const target = event.target as HTMLElement;
-                if (target.closest("button, input, [draggable='true']")) return;
+                if (target.closest("button, input, select, [draggable='true']")) return;
                 const bounds = event.currentTarget.getBoundingClientRect();
                 pointerDragRef.current = {
                     photoId: photo.id,
@@ -410,7 +455,7 @@ function PhotoGrid({
                 <>
                     {/* Tags row */}
                     <div className="photo-tags" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 5 }}>
-                        {photo.tags.slice(0, showTags && isSingleColumn && !onUpdateTags && !expandedTagPhotos.has(photo.id) ? 3 : undefined).map((t) => editingTag?.photoId === photo.id && editingTag.tag === t ? (
+                        {orderedPhotoTags(photo).slice(0, showTags && isSingleColumn && !onUpdateTags && !expandedTagPhotos.has(photo.id) ? 3 : undefined).map((t) => editingTag?.photoId === photo.id && editingTag.tag === t ? (
                             <form
                                 key={t}
                                 onSubmit={(e) => { e.preventDefault(); commitTagEdit(); }}
@@ -441,13 +486,13 @@ function PhotoGrid({
                                 onDrop={(e) => {
                                     e.preventDefault();
                                     if (!onUpdateTags || !draggedTag || draggedTag.photoId !== photo.id || draggedTag.tag === t) return;
-                                    const reordered = [...photo.tags];
+                                    const reordered = orderedPhotoTags(photo);
                                     const draggedIndex = reordered.indexOf(draggedTag.tag);
                                     let targetIndex = reordered.indexOf(t);
                                     reordered.splice(draggedIndex, 1);
                                     if (draggedIndex < targetIndex) targetIndex -= 1;
                                     reordered.splice(targetIndex, 0, draggedTag.tag);
-                                    onUpdateTags(photo.id, reordered);
+                                    onUpdateTags(photo.id, reordered, photo.tagCategories ?? {});
                                     setDraggedTag(null);
                                 }}
                                 style={{ display: "inline-flex", cursor: onUpdateTags ? "grab" : "default" }}
@@ -459,7 +504,12 @@ function PhotoGrid({
                                         setEditingTag({ photoId: photo.id, tag: t });
                                         setTagInput(`#${t}`);
                                     } : onTagClick ? () => onTagClick(t) : undefined}
-                                    onRemove={onUpdateTags ? () => onUpdateTags(photo.id, photo.tags.filter((x) => x !== t)) : undefined}
+                                    onRemove={onUpdateTags ? () => {
+                                        const tags = photo.tags.filter((x) => x !== t);
+                                        const categories = { ...photo.tagCategories };
+                                        delete categories[t];
+                                        onUpdateTags(photo.id, tags, categories);
+                                    } : undefined}
                                 />
                             </span>
                         ))}
@@ -569,41 +619,136 @@ function PhotoGrid({
 // ─── Tag filter bar ───────────────────────────────────────────────────────────
 function TagFilter({
     allTags,
+    categoriesByTag,
     active,
     onChange,
 }: {
     allTags: string[];
+    categoriesByTag: Record<string, TagCategory>;
     active: string[];
     onChange: (tags: string[]) => void;
 }) {
+    const [mobileOpen, setMobileOpen] = useState(false);
     if (allTags.length === 0) return null;
 
     const toggle = (tag: string) =>
         onChange(active.includes(tag) ? active.filter((t) => t !== tag) : [...active, tag]);
+    const groupedTags = tagCategories.map((category) => ({
+        ...category,
+        tags: allTags.filter((tag) => categoriesByTag[tag] === category.value),
+    })).filter((category) => category.tags.length > 0);
 
     return (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <div className="tag-filter">
             <button
-                onClick={() => onChange([])}
-                style={{
-                    padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 500,
-                    letterSpacing: "0.04em", cursor: "pointer",
-                    border: active.length === 0 ? "1.5px solid #0071e3" : "1.5px solid #d2d2d7",
-                    backgroundColor: active.length === 0 ? "#e8f1fb" : "#fff",
-                    color: active.length === 0 ? "#0071e3" : "#86868b",
-                }}
+                type="button"
+                className={`tag-filter-toggle${active.length > 0 ? " tag-filter-toggle--active" : ""}`}
+                aria-expanded={mobileOpen}
+                aria-controls="tag-filter-options"
+                onClick={() => setMobileOpen((open) => !open)}
             >
-                all
+                filter{active.length > 0 ? ` (${active.length})` : ""}
             </button>
-            {allTags.map((tag) => (
-                <TagChip
-                    key={tag}
-                    tag={tag}
-                    active={active.includes(tag)}
-                    onClick={() => toggle(tag)}
-                />
-            ))}
+            <div id="tag-filter-options" className={`tag-filter-options${mobileOpen ? " tag-filter-options--open" : ""}`}>
+                {active.length > 0 && (
+                    <button
+                        type="button"
+                        className="tag-filter-clear"
+                        onClick={() => onChange([])}
+                    >
+                        clear filters
+                    </button>
+                )}
+                {groupedTags.map((group) => (
+                    <div key={group.value} className="tag-filter-category">
+                        <span>{group.label}</span>
+                        <div className="tag-filter-chips">
+                            {group.tags.map((tag) => (
+                                <TagChip
+                                    key={tag}
+                                    tag={tag}
+                                    active={active.includes(tag)}
+                                    onClick={() => toggle(tag)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
+    );
+}
+
+function TagCategoryManager({
+    tags,
+    categoriesByTag,
+    onCategorize,
+}: {
+    tags: string[];
+    categoriesByTag: Record<string, TagCategory>;
+    onCategorize: (tag: string, category: TagCategory) => Promise<void>;
+}) {
+    const [error, setError] = useState<string | null>(null);
+    const [savingTag, setSavingTag] = useState<string | null>(null);
+
+    const dropTag = async (tag: string, category: TagCategory) => {
+        if (!tag || categoriesByTag[tag] === category || savingTag) return;
+        setSavingTag(tag);
+        setError(null);
+        try {
+            await onCategorize(tag, category);
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : `Could not move #${tag}.`);
+        } finally {
+            setSavingTag(null);
+        }
+    };
+
+    return (
+        <section aria-label="Tag categories" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 24 }}>
+            {tagCategories.map((category) => {
+                const categoryTags = tags.filter((tag) => categoriesByTag[tag] === category.value);
+                return (
+                    <div
+                        key={category.value}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                            event.preventDefault();
+                            void dropTag(event.dataTransfer.getData("text/plain"), category.value);
+                        }}
+                        style={{
+                            minHeight: 104, padding: 12, border: "1px dashed #c7c7cc",
+                            borderRadius: 12, background: "#ffffff80",
+                        }}
+                    >
+                        <h2 style={{ margin: "0 0 10px", color: "#68686d", fontSize: 12, fontWeight: 500 }}>{category.label}</h2>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {categoryTags.length === 0
+                                ? <span style={{ color: "#a1a1a6", fontSize: 11 }}>drop tags here</span>
+                                : categoryTags.map((tag) => (
+                                    <span
+                                        key={tag}
+                                        draggable={savingTag !== tag}
+                                        onDragStart={(event) => {
+                                            event.dataTransfer.effectAllowed = "move";
+                                            event.dataTransfer.setData("text/plain", tag);
+                                        }}
+                                        style={{
+                                            display: "inline-flex", alignItems: "center", padding: "4px 9px",
+                                            border: "1px solid #d2d2d7", borderRadius: 20, background: "#fff",
+                                            color: "#68686d", fontSize: 11, cursor: savingTag === tag ? "wait" : "grab",
+                                            opacity: savingTag === tag ? 0.5 : 1,
+                                        }}
+                                    >
+                                        #{tag}
+                                    </span>
+                                ))}
+                        </div>
+                    </div>
+                );
+            })}
+            {error && <p role="alert" style={{ gridColumn: "1 / -1", margin: 0, color: "#ff3b30", fontSize: 12 }}>{error}</p>}
+        </section>
     );
 }
 
@@ -611,6 +756,7 @@ function TagFilter({
 function UploadModal({
     files,
     existingTags,
+    existingTagCategories,
     onConfirm,
     onCancel,
     progress,
@@ -618,7 +764,8 @@ function UploadModal({
 }: {
     files: File[];
     existingTags: string[];
-    onConfirm: (tags: string[]) => void;
+    existingTagCategories: Record<string, TagCategory>;
+    onConfirm: (tags: string[], categories: Record<string, TagCategory>) => void;
     onCancel: () => void;
     progress: number | null;
     error: string | null;
@@ -635,7 +782,10 @@ function UploadModal({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        onConfirm(parseTags(tagInput));
+        onConfirm(selectedTags, Object.fromEntries(selectedTags.map((tag) => [
+            tag,
+            existingTagCategories[tag] ?? "camera",
+        ])));
     };
 
     return (
@@ -687,11 +837,9 @@ function UploadModal({
                             </div>
                         </div>
                     )}
-                    {tagInput.trim() && parseTags(tagInput).some((tag) => !existingTags.includes(tag)) && (
+                    {selectedTags.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {parseTags(tagInput)
-                                .filter((tag) => !existingTags.includes(tag))
-                                .map((tag) => <TagChip key={tag} tag={tag} active />)}
+                            {selectedTags.map((tag) => <TagChip key={tag} tag={tag} active />)}
                         </div>
                     )}
                     {progress !== null && (
@@ -725,11 +873,11 @@ function UploadModal({
 function GalleryPage({ photos }: { photos: Photo[] }) {
     const [activeTags, setActiveTags] = useState<string[]>([]);
 
-    const allTags = Array.from(new Set(photos.flatMap((p) => p.tags))).sort((a, b) => a.localeCompare(b));
+    const allTagData = collectTags(photos);
     const filtered = activeTags.length === 0
         ? photos
         : photos.filter((p) => activeTags.every((t) => p.tags.includes(t)));
-    const availableTags = Array.from(new Set([...activeTags, ...filtered.flatMap((photo) => photo.tags)])).sort((a, b) => a.localeCompare(b));
+    const availableTagData = collectTags(filtered, activeTags);
 
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f7" }}>
@@ -750,7 +898,7 @@ function GalleryPage({ photos }: { photos: Photo[] }) {
                                 {photos.length === 1 ? "photo" : "photos"}
                             </span>
                         </div>
-                        <TagFilter allTags={availableTags} active={activeTags} onChange={setActiveTags} />
+                        <TagFilter allTags={availableTagData.tags} categoriesByTag={availableTagData.categories} active={activeTags} onChange={setActiveTags} />
                         {filtered.length === 0 ? (
                             <div style={emptyState}>
                                 <p style={{ fontSize: 14, color: "#86868b" }}>no photos match these tags.</p>
@@ -816,13 +964,15 @@ function AdminPage({
     onAdd,
     onRemove,
     onUpdateTags,
+    onCategorizeTag,
     onReorder,
     onLogout,
 }: {
     photos: Photo[];
-    onAdd: (file: File, tags: string[], onProgress: (progress: number) => void, signal: AbortSignal) => Promise<void>;
+    onAdd: (file: File, tags: string[], categories: Record<string, TagCategory>, onProgress: (progress: number) => void, signal: AbortSignal) => Promise<void>;
     onRemove: (id: string) => void;
-    onUpdateTags: (id: string, tags: string[]) => void;
+    onUpdateTags: (id: string, tags: string[], categories: Record<string, TagCategory>) => void;
+    onCategorizeTag: (tag: string, category: TagCategory) => Promise<void>;
     onReorder: (draggedId: string, targetId: string, placeAfter: boolean) => void;
     onLogout: () => void;
 }) {
@@ -834,11 +984,11 @@ function AdminPage({
     const [denseGrid, setDenseGrid] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const allTags = Array.from(new Set(photos.flatMap((p) => p.tags))).sort((a, b) => a.localeCompare(b));
+    const allTagData = collectTags(photos);
     const filtered = activeTags.length === 0
         ? photos
         : photos.filter((p) => activeTags.every((t) => p.tags.includes(t)));
-    const availableTags = Array.from(new Set([...activeTags, ...filtered.flatMap((photo) => photo.tags)])).sort((a, b) => a.localeCompare(b));
+    const availableTagData = collectTags(filtered, activeTags);
 
     const pickFiles = (files: FileList | null) => {
         if (!files) return;
@@ -851,7 +1001,7 @@ function AdminPage({
 
     const uploadController = useRef<AbortController | null>(null);
 
-    const confirmUpload = useCallback(async (tags: string[]) => {
+    const confirmUpload = useCallback(async (tags: string[], categories: Record<string, TagCategory>) => {
         if (!pendingFiles) return;
         setUploadError(null);
         setUploadProgress(0);
@@ -861,7 +1011,7 @@ function AdminPage({
             for (let index = 0; index < pendingFiles.length; index += 1) {
                 const fileStart = index / pendingFiles.length * 100;
                 const fileShare = 100 / pendingFiles.length;
-                await onAdd(pendingFiles[index], tags, (fileProgress) => {
+                await onAdd(pendingFiles[index], tags, categories, (fileProgress) => {
                     setUploadProgress(Math.round(fileStart + fileProgress / 100 * fileShare));
                 }, controller.signal);
             }
@@ -922,7 +1072,8 @@ function AdminPage({
 
                 {photos.length > 0 && (
                     <>
-                        <TagFilter allTags={availableTags} active={activeTags} onChange={setActiveTags} />
+                        <TagCategoryManager tags={allTagData.tags} categoriesByTag={allTagData.categories} onCategorize={onCategorizeTag} />
+                        <TagFilter allTags={availableTagData.tags} categoriesByTag={availableTagData.categories} active={activeTags} onChange={setActiveTags} />
                         <PhotoGrid
                             photos={filtered}
                             onRemove={onRemove}
@@ -938,7 +1089,8 @@ function AdminPage({
             {pendingFiles && (
                 <UploadModal
                     files={pendingFiles}
-                    existingTags={allTags}
+                    existingTags={allTagData.tags}
+                    existingTagCategories={allTagData.categories}
                     onConfirm={confirmUpload}
                     onCancel={() => {
                         if (uploadProgress === null) setPendingFiles(null);
@@ -1031,13 +1183,13 @@ export default function App() {
         fetchPhotos().then(setPhotos).catch((error) => console.error(error));
     }, []);
 
-    const addPhoto = async (file: File, tags: string[], onProgress: (progress: number) => void, signal: AbortSignal) => {
+    const addPhoto = async (file: File, tags: string[], categories: Record<string, TagCategory>, onProgress: (progress: number) => void, signal: AbortSignal) => {
         const counts = [0, 0, 0];
         photosRef.current.forEach((photo) => {
             if (photo.column >= 0 && photo.column < 3) counts[photo.column] += 1;
         });
         const column = counts.indexOf(Math.min(...counts));
-        const photo = await uploadPhoto(file, tags, column, onProgress, signal);
+        const photo = await uploadPhoto(file, tags, categories, column, onProgress, signal);
         photosRef.current = [{ ...photo, column }, ...photosRef.current];
         setPhotos(photosRef.current);
     };
@@ -1048,15 +1200,28 @@ export default function App() {
         setPhotos((prev) => prev.filter((p) => p.id !== id));
     };
 
-    const updateTags = async (id: string, tags: string[]) => {
+    const updateTags = async (id: string, tags: string[], categories: Record<string, TagCategory>) => {
         const response = await fetch(`/api/photos/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tags }),
+            body: JSON.stringify({ tags, tagCategories: categories }),
         });
         if (!response.ok) throw new Error("Could not update tags");
         const updated = await response.json() as Photo;
         setPhotos((prev) => prev.map((photo) => photo.id === id ? { ...photo, ...updated } : photo));
+    };
+
+    const categorizeTag = async (tag: string, category: TagCategory) => {
+        const response = await fetch("/api/tag-categories", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tag, category }),
+        });
+        if (!response.ok) throw new Error(`Could not move #${tag} to ${category}.`);
+        photosRef.current = photosRef.current.map((photo) => photo.tags.includes(tag)
+            ? { ...photo, tagCategories: { ...photo.tagCategories, [tag]: category } }
+            : photo);
+        setPhotos(photosRef.current);
     };
 
     const reorderPhotos = async (draggedId: string, targetId: string, placeAfter: boolean) => {
@@ -1095,7 +1260,7 @@ export default function App() {
         if (!authed) return <LoginPage onLogin={login} />;
         return (
             <>
-                <AdminPage photos={photos} onAdd={addPhoto} onRemove={removePhoto} onUpdateTags={updateTags} onReorder={reorderPhotos} onLogout={logout} />
+                <AdminPage photos={photos} onAdd={addPhoto} onRemove={removePhoto} onUpdateTags={updateTags} onCategorizeTag={categorizeTag} onReorder={reorderPhotos} onLogout={logout} />
                 <PhotoCardStyles />
             </>
         );
@@ -1129,6 +1294,43 @@ function PhotoCardStyles() {
       }
       .photo-grid > div {
         min-width: 0;
+      }
+      .tag-filter-toggle {
+        display: none;
+      }
+      .tag-filter-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .tag-filter-category {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        align-items: start;
+        column-gap: 8px;
+      }
+      .tag-filter-category > span {
+        padding-top: 5px;
+        color: #86868b;
+        font-size: 11px;
+        text-transform: lowercase;
+      }
+      .tag-filter-chips {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .tag-filter-clear {
+        align-self: flex-start;
+        padding: 4px 0;
+        border: 0;
+        background: transparent;
+        color: #0071e3;
+        font-size: 11px;
+        cursor: pointer;
       }
             .photo-grid-drop-slot {
                 aspect-ratio: 1 / 1;
@@ -1182,6 +1384,48 @@ function PhotoCardStyles() {
       @media (max-width: 720px) {
         .main-wrap {
           padding: 32px 16px 64px;
+        }
+        .tag-filter-toggle {
+          display: block;
+          margin-bottom: 10px;
+          padding: 6px 11px;
+          border: 1px solid #d2d2d7;
+          border-radius: 20px;
+          background: #fff;
+          color: #86868b;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+        }
+        .tag-filter-toggle:hover {
+          background: #f5f5f7;
+        }
+        .tag-filter-toggle--active {
+          border: 1.5px solid #0071e3;
+          background: #e8f1fb;
+          color: #0071e3;
+        }
+        .tag-filter-toggle--active:hover {
+          background: #e8f1fb;
+        }
+        .tag-filter-options {
+          display: none;
+          margin-bottom: 16px;
+          padding: 12px;
+          border: 1px solid #d2d2d7;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.72);
+        }
+        .tag-filter-options--open {
+          display: flex;
+        }
+        .tag-filter-category {
+          grid-template-columns: 1fr;
+          row-gap: 6px;
+        }
+        .tag-filter-category > span {
+          padding-top: 0;
         }
         .photo-grid {
           grid-template-columns: minmax(0, 1fr);

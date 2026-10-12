@@ -18,6 +18,7 @@ const thumbnailsDir = path.join(photosDir, "thumbnails");
 const metadataPath = path.join(__dirname, "photos.json");
 const publicDir = path.join(__dirname, "dist");
 const thumbnailSize = 1200;
+const validTagCategories = new Set(["camera", "lens", "filmStock"]);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const execFileAsync = promisify(execFile);
 
@@ -134,6 +135,22 @@ app.post("/api/photos", upload.single("photo"), async (req, res) => {
         .split(",")
         .map((tag) => tag.trim().toUpperCase())
         .filter(Boolean);
+    let requestedTagCategories = {};
+    try {
+        requestedTagCategories = req.body.tagCategories ? JSON.parse(req.body.tagCategories) : {};
+    } catch {
+        return res.status(400).json({ error: "Tag categories must be valid JSON." });
+    }
+    if (!requestedTagCategories || typeof requestedTagCategories !== "object" || Array.isArray(requestedTagCategories)) {
+        return res.status(400).json({ error: "Tag categories must be an object." });
+    }
+    if (Object.values(requestedTagCategories).some((category) => !validTagCategories.has(category))) {
+        return res.status(400).json({ error: "Tag category is invalid." });
+    }
+    const tagCategories = Object.fromEntries(tags.map((tag) => [
+        tag,
+        validTagCategories.has(requestedTagCategories[tag]) ? requestedTagCategories[tag] : "camera",
+    ]));
     const requestedColumn = Number(req.body.column);
     const column = Number.isInteger(requestedColumn) && requestedColumn >= 0 && requestedColumn < 3 ? requestedColumn : 0;
 
@@ -155,6 +172,7 @@ app.post("/api/photos", upload.single("photo"), async (req, res) => {
             width: metadata.width || 0,
             height: metadata.height || 0,
             tags: [...new Set(tags)],
+            tagCategories,
             column,
         };
         const photos = await readPhotos();
@@ -170,6 +188,22 @@ app.post("/api/photos", upload.single("photo"), async (req, res) => {
     }
 });
 
+app.patch("/api/tag-categories", async (req, res) => {
+    const tag = String(req.body.tag || "").trim().toUpperCase();
+    const category = req.body.category;
+    if (!tag) return res.status(400).json({ error: "A tag is required." });
+    if (!validTagCategories.has(category)) return res.status(400).json({ error: "Tag category is invalid." });
+
+    const photos = await readPhotos();
+    const taggedPhotos = photos.filter((photo) => photo.tags.includes(tag));
+    if (taggedPhotos.length === 0) return res.status(404).json({ error: "Tag not found." });
+    for (const photo of taggedPhotos) {
+        photo.tagCategories = { ...photo.tagCategories, [tag]: category };
+    }
+    await writePhotos(photos);
+    return res.sendStatus(204);
+});
+
 app.patch("/api/photos/:id", async (req, res) => {
     const photos = await readPhotos();
     const photo = photos.find((item) => item.id === req.params.id);
@@ -178,6 +212,19 @@ app.patch("/api/photos/:id", async (req, res) => {
     photo.tags = Array.isArray(req.body.tags)
         ? [...new Set(req.body.tags.map((tag) => String(tag).trim().toUpperCase()).filter(Boolean))]
         : photo.tags;
+    const requestedTagCategories = req.body.tagCategories ?? {};
+    if (!requestedTagCategories || typeof requestedTagCategories !== "object" || Array.isArray(requestedTagCategories)) {
+        return res.status(400).json({ error: "Tag categories must be an object." });
+    }
+    if (Object.values(requestedTagCategories).some((category) => !validTagCategories.has(category))) {
+        return res.status(400).json({ error: "Tag category is invalid." });
+    }
+    photo.tagCategories = Object.fromEntries(photo.tags.map((tag) => [
+        tag,
+        validTagCategories.has(requestedTagCategories[tag])
+            ? requestedTagCategories[tag]
+            : validTagCategories.has(photo.tagCategories?.[tag]) ? photo.tagCategories[tag] : "camera",
+    ]));
     await writePhotos(photos);
     return res.json(photoResponse(photo));
 });
