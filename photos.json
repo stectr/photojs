@@ -58,19 +58,20 @@
     "column": 2
   },
   {
-    "id": "1791013511062-7205ee14-8db8-439b-a629-80e3d3bb6760",
-    "filename": "1791013511062-7205ee14-8db8-439b-a629-80e3d3bb6760.jpeg",
-    "name": "Roll001_Frame002_R.jpeg",
-    "width": 3395,
-    "height": 2260,
+    "id": "1792043104303-8a5385ac-0a5b-4518-8046-b97c133d4813",
+    "filename": "1792043104303-8a5385ac-0a5b-4518-8046-b97c133d4813.jpg",
+    "name": "DSC_0000-2.jpg",
+    "width": 5555,
+    "height": 3722,
     "tags": [
       "OLYMPUS STYLUS EPIC",
       "KODAK GOLD 200"
     ],
-    "column": 0,
     "tagCategories": {
+      "OLYMPUS STYLUS EPIC": "camera",
       "KODAK GOLD 200": "filmStock"
-    }
+    },
+    "column": 0
   },
   {
     "id": "1791013519401-221baf15-952a-4525-a0c2-58ccf5ee3711",

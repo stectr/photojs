@@ -882,6 +882,7 @@ function GalleryPage({ photos }: { photos: Photo[] }) {
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f7" }}>
             <Nav>
+                <a href="/portfolio" style={navLink}>portfolio</a>
                 <a href="#/admin" style={navLink}>admin</a>
             </Nav>
             <main className="main-wrap gallery-main" style={mainWrap}>
